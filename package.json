@@ -13,7 +13,8 @@
     "test": "c8 ava test/*.ts",
     "lint": "eslint --cache .",
     "format": "prettier --cache --write .",
-    "prepublish": "rm -rf dist && npm run build"
+    "prepublish": "rm -rf dist && npm run build",
+    "bench": "ts-node benchmarks/index.ts"
   },
   "keywords": [
     "proxy",
