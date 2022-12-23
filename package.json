@@ -1,6 +1,6 @@
 {
   "name": "@indutny/sneaky-equals",
-  "version": "3.0.1",
+  "version": "3.0.2",
   "description": "Sneaky equality check between objects using proxies",
   "main": "dist/src/index.js",
   "types": "dist/src/index.d.ts",
