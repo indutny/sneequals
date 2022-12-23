@@ -241,10 +241,10 @@ export function watchAll<Values extends ReadonlyArray<unknown>>(
   return Watcher.watchAll(values);
 }
 
-export type MemoizeStats = {
-  hits: number;
-  misses: number;
-};
+export interface MemoizeStats {
+  onHit(): void;
+  onMiss(): void;
+}
 
 export function memoize<Params extends ReadonlyArray<unknown>, Result>(
   fn: (...params: Params) => Result,
@@ -275,14 +275,14 @@ export function memoize<Params extends ReadonlyArray<unknown>, Result>(
       }
       if (isValid) {
         if (stats !== undefined) {
-          stats.hits++;
+          stats.onHit();
         }
         return cached.result;
       }
     }
 
     if (stats !== undefined) {
-      stats.misses++;
+      stats.onMiss();
     }
     const { proxies, watcher } = watchAll(params);
     const result = watcher.unwrap(fn(...proxies));
