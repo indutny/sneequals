@@ -19,6 +19,11 @@ export type WrapResult<Value> = Readonly<{
   changelog: ChangeLog;
 }>;
 
+export type WrapAllResult<Values extends ReadonlyArray<unknown>> = Readonly<{
+  proxies: Values;
+  changelog: ChangeLog;
+}>;
+
 const kSource: unique symbol = Symbol('kSource');
 
 export class ChangeLog {
@@ -33,6 +38,18 @@ export class ChangeLog {
     const changelog = new ChangeLog();
     return {
       proxy: changelog.track(value),
+      changelog,
+    };
+  }
+
+  public static wrapAll<Values extends ReadonlyArray<unknown>>(
+    values: Values,
+  ): WrapAllResult<Values> {
+    const changelog = new ChangeLog();
+    return {
+      proxies: values.map((value) =>
+        changelog.track(value),
+      ) as unknown as Values,
       changelog,
     };
   }
@@ -225,4 +242,10 @@ export class ChangeLog {
 
 export function wrap<Value>(value: Value): WrapResult<Value> {
   return ChangeLog.wrap(value);
+}
+
+export function wrapAll<Values extends ReadonlyArray<unknown>>(
+  values: Values,
+): WrapAllResult<Values> {
+  return ChangeLog.wrapAll(values);
 }

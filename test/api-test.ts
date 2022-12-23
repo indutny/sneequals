@@ -1,6 +1,6 @@
 import test from 'ava';
 
-import { wrap } from '../src';
+import { wrap, wrapAll } from '../src';
 
 test('placing sub-property object into wrapped result', (t) => {
   const input = {
@@ -313,10 +313,44 @@ test('own property descriptor access', (t) => {
   );
 });
 
+test('wrapAll', (t) => {
+  const a = { x: 1 };
+  const b = { x: 1 };
+  const c = { x: 1 };
+
+  const { proxies, changelog } = wrapAll([a, b, c]);
+
+  const derived = changelog.unwrap({
+    a: proxies[0]?.x,
+    b: proxies[1]?.x,
+  });
+  changelog.freeze();
+
+  t.is(derived.a, a.x);
+  t.is(derived.b, b.x);
+
+  t.false(changelog.isChanged(a, { x: 1 }), 'copy of first object');
+  t.false(changelog.isChanged(b, { x: 1 }), 'copy of second object');
+  t.false(changelog.isChanged(c, { x: 1 }), 'copy of third object');
+  t.false(changelog.isChanged(c, { x: 2 }), 'changed third object');
+
+  t.true(changelog.isChanged(a, { x: 2 }), 'changed first object');
+  t.true(changelog.isChanged(b, { x: 2 }), 'changed second object');
+});
+
 test('disallowed updates', (t) => {
   const input: Partial<{ a: number; b: number }> = { a: 1 };
 
   t.throws(() => (wrap(input).proxy.a = 1));
   t.throws(() => delete wrap(input).proxy.a);
   t.throws(() => Object.defineProperty(wrap(input).proxy, 'a', {}));
+});
+
+test('revoked proxies', (t) => {
+  const input: Partial<{ a: number; b: number }> = { a: 1 };
+
+  const { proxy, changelog } = wrap(input);
+  changelog.freeze();
+
+  t.throws(() => proxy.a);
 });
