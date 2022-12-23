@@ -106,6 +106,7 @@ const fn = memoize((a, b) => {
 ## Benchmarks
 
 On M1 Macbook Pro 13:
+
 ```sh
 $ npm run bench
 watch+unwrap: 554431.062 operations/second

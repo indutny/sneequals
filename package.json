@@ -13,6 +13,7 @@
     "test": "c8 ava test/*.ts",
     "lint": "eslint --cache .",
     "format": "prettier --cache --write .",
+    "check:format": "prettier --cache --check .",
     "prepublish": "rm -rf dist && npm run build",
     "bench": "ts-node benchmarks/index.ts"
   },
