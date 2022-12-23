@@ -103,6 +103,16 @@ const fn = memoize((a, b) => {
 });
 ```
 
+## Benchmarks
+
+On M1 Macbook Pro 13:
+```sh
+$ npm run bench
+watch+unwrap: 554431.062 operations/second
+isChanged: 4575487.253 operations/second
+memoize: 4070533.538 operations/second
+```
+
 ## Credits
 
 Name coined by [Scott Nonnenberg](https://github.com/scottnonnenberg/).

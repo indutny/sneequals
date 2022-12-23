@@ -6,7 +6,7 @@ type BenchOptions = Readonly<{
   run(): number;
 }>;
 
-function bench({ name, iterations = 100000, run }: BenchOptions): void {
+function bench({ name, iterations = 1000000, run }: BenchOptions): void {
   const start = process.hrtime.bigint();
   let acc = 0;
   for (let i = 0; i < iterations; i++) {
@@ -20,7 +20,7 @@ function bench({ name, iterations = 100000, run }: BenchOptions): void {
 
   const durationInSeconds = Number(duration) / 1e9;
   const ops = iterations / durationInSeconds;
-  console.log(`${name}: ${ops.toFixed(3)} operations/secons`);
+  console.log(`${name}: ${ops.toFixed(3)} operations/second`);
 }
 
 bench({
