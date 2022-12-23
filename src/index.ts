@@ -107,6 +107,14 @@ export class SneakyEquals {
     return result;
   }
 
+  public wasTouched<Value>(oldValue: Value): boolean {
+    // Primitives
+    if (oldValue === null || typeof oldValue !== 'object') {
+      return false;
+    }
+    return this.touched.has(oldValue);
+  }
+
   public isEqual<Value>(oldValue: Value, newValue: Value): boolean {
     // Fast case!
     if (oldValue === newValue) {

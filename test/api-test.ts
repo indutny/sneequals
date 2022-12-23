@@ -68,6 +68,9 @@ test('returning sub-property object without accessing it', (t) => {
   });
 
   t.is(result.y, o.x.y);
+  t.true(s.wasTouched(o), 'object was touched');
+  t.true(s.wasTouched(o.x), 'object.x was touched');
+  t.false(s.wasTouched(o.z), 'object.z was not touched');
 
   t.true(s.isEqual(o, o), 'object should be equal to itself');
   t.true(
@@ -124,17 +127,23 @@ test('returning sub-property object while accessing it', (t) => {
 test('comparing arrays', (t) => {
   const s = new SneakyEquals();
 
-  const arr = [{x : 1}, {x: 2 }];
+  const arr = [{ x: 1 }, { x: 2 }];
   const p = s.track(arr);
 
   const derived = s.unwrap({
     x: p[1]?.x,
   });
 
+  t.is(derived.x, 2);
+
+  t.true(s.wasTouched(arr), 'was touched');
+  t.false(s.wasTouched(arr[0]), "[0] wasn't touched");
+  t.true(s.wasTouched(arr[1]), '[1] was touched');
+
   t.true(s.isEqual(arr, arr), 'same array');
-  t.true(s.isEqual(arr, [{x: 3}, {x: 2}]), 'same property');
-  t.false(s.isEqual(arr, [{x: 3}, {x: 3}]), 'different property');
-  t.false(s.isEqual(arr, [{x: 3}]), 'different length');
+  t.true(s.isEqual(arr, [{ x: 3 }, { x: 2 }]), 'same property');
+  t.false(s.isEqual(arr, [{ x: 3 }, { x: 3 }]), 'different property');
+  t.false(s.isEqual(arr, [{ x: 3 }]), 'different length');
 });
 
 test('accessing ownKeys', (t) => {
