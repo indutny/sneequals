@@ -121,6 +121,22 @@ test('returning sub-property object while accessing it', (t) => {
   );
 });
 
+test('comparing arrays', (t) => {
+  const s = new SneakyEquals();
+
+  const arr = [{x : 1}, {x: 2 }];
+  const p = s.track(arr);
+
+  const derived = s.unwrap({
+    x: p[1]?.x,
+  });
+
+  t.true(s.isEqual(arr, arr), 'same array');
+  t.true(s.isEqual(arr, [{x: 3}, {x: 2}]), 'same property');
+  t.false(s.isEqual(arr, [{x: 3}, {x: 3}]), 'different property');
+  t.false(s.isEqual(arr, [{x: 3}]), 'different length');
+});
+
 test('accessing ownKeys', (t) => {
   const o: Partial<{
     a: number;
