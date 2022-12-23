@@ -14,18 +14,98 @@ type ProxyMapEntry = Readonly<{
 }>;
 
 export class SneakyEquals {
-  private readonly proxyMap = new WeakMap<object, ProxyMapEntry>();
+  private readonly proxyMap = new Map<object, ProxyMapEntry>();
   private readonly touched = new WeakMap<
     object,
     Set<string | symbol> | typeof kSelf
   >();
+  private depth = 0;
 
-  public track<Value>(value: Value): Value {
+  public produce<Input, Output>(
+    input: Input,
+    producer: (input: Input) => Output,
+  ): Output {
+    try {
+      this.depth++;
+      return this.unwrap(producer(this.track(input)));
+    } finally {
+      // We are top-level caller - revoke all proxies
+      if (--this.depth === 0) {
+        for (const { revoke } of this.proxyMap.values()) {
+          revoke();
+        }
+        this.proxyMap.clear();
+      }
+    }
+  }
+
+  public wasTouched<Value>(oldValue: Value): boolean {
+    // Primitives
+    if (oldValue === null || typeof oldValue !== 'object') {
+      return false;
+    }
+    return this.touched.has(oldValue);
+  }
+
+  public isChanged<Value>(oldValue: Value, newValue: Value): boolean {
+    // Fast case!
+    if (oldValue === newValue) {
+      return false;
+    }
+
+    // Primitives
+    if (
+      oldValue === null ||
+      typeof oldValue !== 'object' ||
+      newValue === null ||
+      typeof newValue !== 'object'
+    ) {
+      return oldValue !== newValue;
+    }
+
+    const touched = this.touched.get(oldValue);
+
+    // Object wasn't touched - assuming it is the same.
+    if (touched === undefined) {
+      return false;
+    }
+
+    // We checked that the objects are different above.
+    if (touched === kSelf) {
+      return true;
+    }
+
+    for (const key of touched) {
+      if (key === kOwnKeys) {
+        if (!hasSameOwnValues(oldValue, newValue)) {
+          return true;
+        }
+      }
+
+      const areDifferent = this.isChanged(
+        (oldValue as AbstractRecord)[key],
+        (newValue as AbstractRecord)[key],
+      );
+
+      if (areDifferent) {
+        return true;
+      }
+    }
+
+    return false;
+  }
+
+  private track<Value>(value: Value): Value {
     // Primitives
     if (value === null || typeof value !== 'object') {
       return value;
     }
 
+    if ((value as AbstractRecord)[kSource] !== undefined) {
+      return this.track((value as AbstractRecord)[kSource] as Value);
+    }
+
+    // Return cached proxy
     const entry = this.proxyMap.get(value);
     if (entry !== undefined) {
       return entry.proxy as Value;
@@ -68,7 +148,7 @@ export class SneakyEquals {
     return proxy as Value;
   }
 
-  public unwrap<Result>(wrapped: Result): Result {
+  private unwrap<Result>(wrapped: Result): Result {
     // Primitives
     if (wrapped === null || typeof wrapped !== 'object') {
       return wrapped;
@@ -77,13 +157,6 @@ export class SneakyEquals {
     const source: Result | undefined = (wrapped as Record<symbol, Result>)[
       kSource
     ];
-
-    // Revoke proxy
-    if (source !== undefined) {
-      const entry = this.proxyMap.get(source as object);
-      this.proxyMap.delete(source as object);
-      entry?.revoke();
-    }
 
     let result = source ?? wrapped;
     let isCopied = false;
@@ -105,59 +178,6 @@ export class SneakyEquals {
     }
 
     return result;
-  }
-
-  public wasTouched<Value>(oldValue: Value): boolean {
-    // Primitives
-    if (oldValue === null || typeof oldValue !== 'object') {
-      return false;
-    }
-    return this.touched.has(oldValue);
-  }
-
-  public isEqual<Value>(oldValue: Value, newValue: Value): boolean {
-    // Fast case!
-    if (oldValue === newValue) {
-      return true;
-    }
-
-    // Primitives
-    if (
-      oldValue === null ||
-      typeof oldValue !== 'object' ||
-      newValue === null ||
-      typeof newValue !== 'object'
-    ) {
-      return oldValue === newValue;
-    }
-
-    const touched = this.touched.get(oldValue);
-    if (touched === undefined) {
-      return false;
-    }
-
-    if (touched === kSelf) {
-      return false;
-    }
-
-    for (const key of touched) {
-      if (key === kOwnKeys) {
-        if (!hasSameOwnValues(oldValue, newValue)) {
-          return false;
-        }
-      }
-
-      const areSame = this.isEqual(
-        (oldValue as AbstractRecord)[key],
-        (newValue as AbstractRecord)[key],
-      );
-
-      if (!areSame) {
-        return false;
-      }
-    }
-
-    return true;
   }
 
   private touch(target: object, key: string | symbol | typeof kSelf): void {
