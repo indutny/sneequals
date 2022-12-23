@@ -242,8 +242,8 @@ export function watchAll<Values extends ReadonlyArray<unknown>>(
 }
 
 export interface MemoizeStats {
-  onHit(): void;
-  onMiss(): void;
+  onHit?(): void;
+  onMiss?(): void;
 }
 
 export function memoize<Params extends ReadonlyArray<unknown>, Result>(
@@ -274,16 +274,12 @@ export function memoize<Params extends ReadonlyArray<unknown>, Result>(
         }
       }
       if (isValid) {
-        if (stats !== undefined) {
-          stats.onHit();
-        }
+        stats?.onHit?.();
         return cached.result;
       }
     }
 
-    if (stats !== undefined) {
-      stats.onMiss();
-    }
+    stats?.onMiss?.();
     const { proxies, watcher } = watchAll(params);
     const result = watcher.unwrap(fn(...proxies));
 
