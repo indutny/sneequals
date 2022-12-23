@@ -11,41 +11,42 @@ type TouchedEntry = {
 
 export type WrapResult<Value> = Readonly<{
   proxy: Value;
-  changelog: ChangeLog;
+  watcher: Watcher;
 }>;
 
 export type WrapAllResult<Values extends ReadonlyArray<unknown>> = Readonly<{
   proxies: Values;
-  changelog: ChangeLog;
+  watcher: Watcher;
 }>;
 
-export class ChangeLog {
+export class Watcher {
   private readonly proxyMap = new WeakMap<object, object>();
   private readonly touched = new WeakMap<object, TouchedEntry>();
-  private revokes = new Array<() => void>;
   private readonly kSource: symbol = Symbol('kSource');
+
+  private revokes = new Array<() => void>;
 
   protected constructor() {
     // disallow constructing directly.
   }
 
   public static wrap<Value>(value: Value): WrapResult<Value> {
-    const changelog = new ChangeLog();
+    const watcher = new Watcher();
     return {
-      proxy: changelog.track(value),
-      changelog,
+      proxy: watcher.track(value),
+      watcher,
     };
   }
 
   public static wrapAll<Values extends ReadonlyArray<unknown>>(
     values: Values,
   ): WrapAllResult<Values> {
-    const changelog = new ChangeLog();
+    const watcher = new Watcher();
     return {
       proxies: values.map((value) =>
-        changelog.track(value),
+        watcher.track(value),
       ) as unknown as Values,
-      changelog,
+      watcher,
     };
   }
 
@@ -238,11 +239,11 @@ export class ChangeLog {
 }
 
 export function wrap<Value>(value: Value): WrapResult<Value> {
-  return ChangeLog.wrap(value);
+  return Watcher.wrap(value);
 }
 
 export function wrapAll<Values extends ReadonlyArray<unknown>>(
   values: Values,
 ): WrapAllResult<Values> {
-  return ChangeLog.wrapAll(values);
+  return Watcher.wrapAll(values);
 }

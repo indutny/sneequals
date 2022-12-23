@@ -23,7 +23,7 @@ const originalData = {
   },
 };
 
-const { proxy, changelog } = wrap(originalData);
+const { proxy, watcher } = wrap(originalData);
 
 function doSomethingWithData(data) {
   return {
@@ -32,10 +32,10 @@ function doSomethingWithData(data) {
   };
 }
 
-const result = changelog.unwrap(doSomethingWithData(proxy));
+const result = watcher.unwrap(doSomethingWithData(proxy));
 
 // Prevent further access to proxy
-changelog.freeze();
+watcher.freeze();
 
 const sneakyEqualData = {
   nested: {
@@ -45,7 +45,7 @@ const sneakyEqualData = {
   avatar: original.avatar,
 };
 
-console.log(changelog.isChanged(originalData, sneakyEqualData)); // false
+console.log(watcher.isChanged(originalData, sneakyEqualData)); // false
 
 const sneakyDifferentData = {
   nested: {
@@ -56,7 +56,7 @@ const sneakyDifferentData = {
   },
 };
 
-console.log(changelog.isChanged(originalData, sneakyDifferentData)); // true
+console.log(watcher.isChanged(originalData, sneakyDifferentData)); // true
 ```
 
 ## LICENSE

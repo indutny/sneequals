@@ -10,22 +10,22 @@ test('placing sub-property object into wrapped result', (t) => {
     z: 2,
   };
 
-  const { proxy, changelog } = wrap(input);
+  const { proxy, watcher } = wrap(input);
 
-  const derived = changelog.unwrap({
+  const derived = watcher.unwrap({
     y: proxy.x.y,
   });
-  changelog.freeze();
+  watcher.freeze();
 
   t.is(derived.y, input.x.y);
 
-  t.false(changelog.isChanged(input, input), 'input should be equal to itself');
+  t.false(watcher.isChanged(input, input), 'input should be equal to itself');
   t.false(
-    changelog.isChanged(input, { ...input, z: 3 }),
+    watcher.isChanged(input, { ...input, z: 3 }),
     'unrelated properties should not be taken in account',
   );
   t.false(
-    changelog.isChanged(input, {
+    watcher.isChanged(input, {
       x: {
         y: 1,
       },
@@ -34,7 +34,7 @@ test('placing sub-property object into wrapped result', (t) => {
     'replacing deeply accessed subojects should not cause invalidation',
   );
   t.true(
-    changelog.isChanged(input, {
+    watcher.isChanged(input, {
       x: {
         y: 2,
       },
@@ -52,24 +52,24 @@ test('placing and accessing sub-property object into wrapped result', (t) => {
     z: 2,
   };
 
-  const { proxy, changelog } = wrap(input);
+  const { proxy, watcher } = wrap(input);
 
-  const derived = changelog.unwrap({
+  const derived = watcher.unwrap({
     x: proxy.x,
     y: proxy.x.y,
   });
-  changelog.freeze();
+  watcher.freeze();
 
   t.is(derived.x, input.x);
   t.is(derived.y, input.x.y);
 
-  t.false(changelog.isChanged(input, input), 'input should be equal to itself');
+  t.false(watcher.isChanged(input, input), 'input should be equal to itself');
   t.false(
-    changelog.isChanged(input, { ...input, z: 3 }),
+    watcher.isChanged(input, { ...input, z: 3 }),
     'unrelated properties should not be taken in account',
   );
   t.true(
-    changelog.isChanged(input, {
+    watcher.isChanged(input, {
       x: {
         y: 1,
       },
@@ -87,48 +87,48 @@ test('nested wraps', (t) => {
     z: 2,
   };
 
-  const { proxy: p1, changelog: c1 } = wrap(input);
-  const { proxy: p2, changelog: c2 } = wrap(p1.x);
+  const { proxy: p1, watcher: w1 } = wrap(input);
+  const { proxy: p2, watcher: w2 } = wrap(p1.x);
 
-  const derived = c1.unwrap({
-    y: c2.unwrap(p2.y),
+  const derived = w1.unwrap({
+    y: w2.unwrap(p2.y),
   });
   t.is(derived.y, 1);
 
-  c2.freeze();
+  w2.freeze();
 
-  t.false(c2.isChanged(p1.x, p1.x), 'outer: proxy should be equal to itself');
+  t.false(w2.isChanged(p1.x, p1.x), 'outer: proxy should be equal to itself');
   t.false(
-    c2.isChanged(p1.x, { y: 1 }),
+    w2.isChanged(p1.x, { y: 1 }),
     'outer: proxy should be equal to its copy',
   );
   t.true(
-    c2.isChanged(p1.x, { y: 2 }),
+    w2.isChanged(p1.x, { y: 2 }),
     'outer: value different from proxy should be detected',
   );
 
   t.false(
-    c2.isChanged(p1.x, input.x),
+    w2.isChanged(p1.x, input.x),
     'outer: input should be equal to itself',
   );
   t.false(
-    c2.isChanged(p1.x, { y: 1 }),
+    w2.isChanged(p1.x, { y: 1 }),
     'outer: input should be equal to its copy',
   );
   t.true(
-    c2.isChanged(p1.x, { y: 2 }),
+    w2.isChanged(p1.x, { y: 2 }),
     'outer: value different from input should be detected',
   );
 
-  c1.freeze();
+  w1.freeze();
 
-  t.false(c1.isChanged(input, input), 'inner: input should be equal to itself');
+  t.false(w1.isChanged(input, input), 'inner: input should be equal to itself');
   t.false(
-    c1.isChanged(input, { ...input, z: 3 }),
+    w1.isChanged(input, { ...input, z: 3 }),
     'unrelated properties should not be taken in account',
   );
   t.false(
-    c1.isChanged(input, {
+    w1.isChanged(input, {
       x: {
         y: 1,
       },
@@ -137,7 +137,7 @@ test('nested wraps', (t) => {
     'replacing deeply accessed subojects should not cause invalidation',
   );
   t.true(
-    c1.isChanged(input, {
+    w1.isChanged(input, {
       x: {
         y: 2,
       },
@@ -149,28 +149,28 @@ test('nested wraps', (t) => {
 
 test('comparing arrays', (t) => {
   const input: Array<{ x: number; y?: number }> = [{ x: 1 }, { x: 2 }];
-  const { proxy, changelog } = wrap(input);
-  const derived = changelog.unwrap({
+  const { proxy, watcher } = wrap(input);
+  const derived = watcher.unwrap({
     x: proxy[1]?.x,
   });
-  changelog.freeze();
+  watcher.freeze();
 
   t.is(derived.x, 2);
 
-  t.false(changelog.isChanged(input, input), 'same input');
+  t.false(watcher.isChanged(input, input), 'same input');
   t.false(
-    changelog.isChanged(input, [{ x: 3 }, { x: 2 }]),
+    watcher.isChanged(input, [{ x: 3 }, { x: 2 }]),
     'same property at [1]',
   );
   t.false(
-    changelog.isChanged(input, [{ x: 3 }, { x: 2, y: 3 }]),
+    watcher.isChanged(input, [{ x: 3 }, { x: 2, y: 3 }]),
     'extra property at [1]',
   );
   t.true(
-    changelog.isChanged(input, [{ x: 3 }, { x: 3 }]),
+    watcher.isChanged(input, [{ x: 3 }, { x: 3 }]),
     'different property at [1]',
   );
-  t.true(changelog.isChanged(input, [{ x: 3 }]), 'different length');
+  t.true(watcher.isChanged(input, [{ x: 3 }]), 'different length');
 });
 
 test('accessing own keys', (t) => {
@@ -183,17 +183,17 @@ test('accessing own keys', (t) => {
     b: 2,
   };
 
-  const { proxy, changelog } = wrap(input);
-  const derived = changelog.unwrap({
+  const { proxy, watcher } = wrap(input);
+  const derived = watcher.unwrap({
     keys: Reflect.ownKeys(proxy).sort(),
   });
-  changelog.freeze();
+  watcher.freeze();
 
   t.deepEqual(derived.keys, ['a', 'b']);
 
-  t.false(changelog.isChanged(input, input), 'input should be equal to itself');
+  t.false(watcher.isChanged(input, input), 'input should be equal to itself');
   t.false(
-    changelog.isChanged(input, { a: 2, b: 3 }),
+    watcher.isChanged(input, { a: 2, b: 3 }),
     'changed values should not trigger invalidation',
   );
 
@@ -206,20 +206,20 @@ test('accessing own keys', (t) => {
     }
   })();
   t.false(
-    changelog.isChanged(input, cInProto),
+    watcher.isChanged(input, cInProto),
     'different prototype keys should not trigger invalidation',
   );
 
   t.true(
-    changelog.isChanged(input, { a: 1, b: 2, c: 3 }),
+    watcher.isChanged(input, { a: 1, b: 2, c: 3 }),
     'added keys should trigger invalidation',
   );
   t.true(
-    changelog.isChanged(input, { a: 1 }),
+    watcher.isChanged(input, { a: 1 }),
     'removed keys should trigger invalidation',
   );
   t.true(
-    changelog.isChanged(input, { b: 2, c: 3 }),
+    watcher.isChanged(input, { b: 2, c: 3 }),
     'different keys should trigger invalidation',
   );
 
@@ -233,49 +233,49 @@ test('accessing own keys', (t) => {
     c = 1;
   })();
   t.true(
-    changelog.isChanged(input, bInProto),
+    watcher.isChanged(input, bInProto),
     'missing own keys present in prototype should trigger invalidation',
   );
 });
 
 test('comparing untracked primitives', (t) => {
-  const { changelog } = wrap({});
-  changelog.freeze();
+  const { watcher } = wrap({});
+  watcher.freeze();
 
-  t.false(changelog.isChanged(true, true));
-  t.true(changelog.isChanged(true, false));
-  t.false(changelog.isChanged(null, null));
-  t.true(changelog.isChanged(null, { a: 1 }));
+  t.false(watcher.isChanged(true, true));
+  t.true(watcher.isChanged(true, false));
+  t.false(watcher.isChanged(null, null));
+  t.true(watcher.isChanged(null, { a: 1 }));
 });
 
 test('comparing untracked objects', (t) => {
-  const { changelog } = wrap({});
-  changelog.freeze();
+  const { watcher } = wrap({});
+  watcher.freeze();
 
-  t.false(changelog.isChanged({}, {}));
+  t.false(watcher.isChanged({}, {}));
 
   const same = {};
-  t.false(changelog.isChanged(same, same));
+  t.false(watcher.isChanged(same, same));
 });
 
 test('it supports "in"', (t) => {
   const input: Partial<{ a: number; b: number }> = { a: 1 };
 
-  const { proxy, changelog } = wrap(input);
+  const { proxy, watcher } = wrap(input);
 
-  const derived = changelog.unwrap({
+  const derived = watcher.unwrap({
     hasA: 'a' in proxy ? true : undefined,
   });
 
   t.true(derived.hasA);
 
-  t.false(changelog.isChanged(input, { a: 1 }), 'copied input is the same');
+  t.false(watcher.isChanged(input, { a: 1 }), 'copied input is the same');
   t.false(
-    changelog.isChanged(input, { a: 1, b: 2 }),
+    watcher.isChanged(input, { a: 1, b: 2 }),
     'new properties are ignored',
   );
   t.true(
-    changelog.isChanged(input, { a: 2 }),
+    watcher.isChanged(input, { a: 2 }),
     'changed property is not ignored',
   );
 });
@@ -283,9 +283,9 @@ test('it supports "in"', (t) => {
 test('own property descriptor access', (t) => {
   const input: Partial<{ a: number; b: number }> = { a: 1 };
 
-  const { proxy, changelog } = wrap(input);
+  const { proxy, watcher } = wrap(input);
 
-  const derived = changelog.unwrap({
+  const derived = watcher.unwrap({
     hasA: Object.hasOwn(proxy, 'a'),
     hasB: Object.hasOwn(proxy, 'b'),
     a: proxy.a,
@@ -295,10 +295,10 @@ test('own property descriptor access', (t) => {
   t.false(derived.hasB);
   t.is(derived.a, input.a);
 
-  t.false(changelog.isChanged(input, input), 'self comparison returns true');
-  t.false(changelog.isChanged(input, { a: 1 }), 'same own property');
+  t.false(watcher.isChanged(input, input), 'self comparison returns true');
+  t.false(watcher.isChanged(input, { a: 1 }), 'same own property');
 
-  t.true(changelog.isChanged(input, { a: 2 }), 'different own property');
+  t.true(watcher.isChanged(input, { a: 2 }), 'different own property');
   const aInProto = new (class X {
     public get a() {
       return 1;
@@ -306,9 +306,9 @@ test('own property descriptor access', (t) => {
 
     b = 2;
   })();
-  t.true(changelog.isChanged(input, aInProto), 'not own property anymore');
+  t.true(watcher.isChanged(input, aInProto), 'not own property anymore');
   t.true(
-    changelog.isChanged(input, { a: 1, b: 2 }),
+    watcher.isChanged(input, { a: 1, b: 2 }),
     'old property not in proto',
   );
 });
@@ -318,24 +318,24 @@ test('wrapAll', (t) => {
   const b = { x: 1 };
   const c = { x: 1 };
 
-  const { proxies, changelog } = wrapAll([a, b, c]);
+  const { proxies, watcher } = wrapAll([a, b, c]);
 
-  const derived = changelog.unwrap({
+  const derived = watcher.unwrap({
     a: proxies[0]?.x,
     b: proxies[1]?.x,
   });
-  changelog.freeze();
+  watcher.freeze();
 
   t.is(derived.a, a.x);
   t.is(derived.b, b.x);
 
-  t.false(changelog.isChanged(a, { x: 1 }), 'copy of first object');
-  t.false(changelog.isChanged(b, { x: 1 }), 'copy of second object');
-  t.false(changelog.isChanged(c, { x: 1 }), 'copy of third object');
-  t.false(changelog.isChanged(c, { x: 2 }), 'changed third object');
+  t.false(watcher.isChanged(a, { x: 1 }), 'copy of first object');
+  t.false(watcher.isChanged(b, { x: 1 }), 'copy of second object');
+  t.false(watcher.isChanged(c, { x: 1 }), 'copy of third object');
+  t.false(watcher.isChanged(c, { x: 2 }), 'changed third object');
 
-  t.true(changelog.isChanged(a, { x: 2 }), 'changed first object');
-  t.true(changelog.isChanged(b, { x: 2 }), 'changed second object');
+  t.true(watcher.isChanged(a, { x: 2 }), 'changed first object');
+  t.true(watcher.isChanged(b, { x: 2 }), 'changed second object');
 });
 
 test('disallowed updates', (t) => {
@@ -349,8 +349,8 @@ test('disallowed updates', (t) => {
 test('revoked proxies', (t) => {
   const input: Partial<{ a: number; b: number }> = { a: 1 };
 
-  const { proxy, changelog } = wrap(input);
-  changelog.freeze();
+  const { proxy, watcher } = wrap(input);
+  watcher.freeze();
 
   t.throws(() => proxy.a);
 });
