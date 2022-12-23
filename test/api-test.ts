@@ -108,15 +108,15 @@ test('nested wraps', (t) => {
   );
 
   t.false(
-    c2.isChanged(input.x, input.x),
+    c2.isChanged(p1.x, input.x),
     'outer: input should be equal to itself',
   );
   t.false(
-    c2.isChanged(input.x, { y: 1 }),
+    c2.isChanged(p1.x, { y: 1 }),
     'outer: input should be equal to its copy',
   );
   t.true(
-    c2.isChanged(input.x, { y: 2 }),
+    c2.isChanged(p1.x, { y: 2 }),
     'outer: value different from input should be detected',
   );
 

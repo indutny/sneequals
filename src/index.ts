@@ -24,11 +24,10 @@ export type WrapAllResult<Values extends ReadonlyArray<unknown>> = Readonly<{
   changelog: ChangeLog;
 }>;
 
-const kSource: unique symbol = Symbol('kSource');
-
 export class ChangeLog {
   private readonly proxyMap = new Map<object, ProxyMapEntry>();
   private readonly touched = new WeakMap<object, TouchedEntry>();
+  private readonly kSource: symbol = Symbol('kSource');
 
   protected constructor() {
     // disallow constructing directly.
@@ -176,7 +175,7 @@ export class ChangeLog {
       setPrototypeOf: throwReadOnly,
 
       get: (target, key) => {
-        if (key === kSource) {
+        if (key === this.kSource) {
           return value;
         }
 
@@ -229,7 +228,7 @@ export class ChangeLog {
     // eslint-disable-next-line no-constant-condition
     while (true) {
       const source: Value | undefined = (result as Record<symbol, Value>)[
-        kSource
+        this.kSource
       ];
       if (source === undefined) {
         break;
