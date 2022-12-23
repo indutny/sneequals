@@ -1,5 +1,6 @@
 # @indutny/sneequals
 
+![example workflow](https://github.com/indutny/sneequals/actions/workflows/test.yml/badge.svg)
 [![npm](https://img.shields.io/npm/v/@indutny/sneequals)](https://www.npmjs.com/package/@indutny/sneequals)
 [![size](https://img.shields.io/bundlephobia/minzip/@indutny/sneequals)](https://bundlephobia.com/result?p=@indutny/sneequals)
 
