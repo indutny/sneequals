@@ -97,14 +97,27 @@ test('nested wraps', (t) => {
 
   c2.freeze();
 
-  t.false(c2.isChanged(p1.x, p1.x), 'outer: input should be equal to itself');
+  t.false(c2.isChanged(p1.x, p1.x), 'outer: proxy should be equal to itself');
   t.false(
     c2.isChanged(p1.x, { y: 1 }),
-    'outer: input should be equal to its copy',
+    'outer: proxy should be equal to its copy',
   );
   t.true(
     c2.isChanged(p1.x, { y: 2 }),
-    'outer: different value should be detected',
+    'outer: value different from proxy should be detected',
+  );
+
+  t.false(
+    c2.isChanged(input.x, input.x),
+    'outer: input should be equal to itself',
+  );
+  t.false(
+    c2.isChanged(input.x, { y: 1 }),
+    'outer: input should be equal to its copy',
+  );
+  t.true(
+    c2.isChanged(input.x, { y: 2 }),
+    'outer: value different from input should be detected',
   );
 
   c1.freeze();

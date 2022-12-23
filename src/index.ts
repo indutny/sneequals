@@ -19,9 +19,9 @@ export type WrapResult<Value> = Readonly<{
   changelog: ChangeLog;
 }>;
 
-export class ChangeLog {
-  private readonly kSource = Symbol('kSource');
+const kSource: unique symbol = Symbol('kSource');
 
+export class ChangeLog {
   private readonly proxyMap = new Map<object, ProxyMapEntry>();
   private readonly touched = new WeakMap<object, TouchedEntry>();
 
@@ -43,10 +43,10 @@ export class ChangeLog {
       return result;
     }
 
-    const source: Result | undefined = (result as Record<symbol, Result>)[
-      this.kSource
-    ];
-    if (source !== undefined) {
+    const source = this.getSource(result);
+
+    // If it was a proxy - just unwrap it
+    if (source !== result) {
       return source;
     }
 
@@ -75,11 +75,6 @@ export class ChangeLog {
   }
 
   public isChanged<Value>(oldValue: Value, newValue: Value): boolean {
-    // Fast case!
-    if (oldValue === newValue) {
-      return false;
-    }
-
     // Primitives
     if (
       oldValue === null ||
@@ -90,7 +85,14 @@ export class ChangeLog {
       return oldValue !== newValue;
     }
 
-    const touched = this.touched.get(oldValue);
+    const oldSource = this.getSource(oldValue);
+
+    // Fast case!
+    if (oldSource === newValue) {
+      return false;
+    }
+
+    const touched = this.touched.get(oldSource);
 
     // Object wasn't touched - assuming it is the same.
     if (touched === undefined) {
@@ -102,11 +104,11 @@ export class ChangeLog {
       return true;
     }
 
-    if (touched.allOwnKeys && !hasSameOwnKeys(oldValue, newValue)) {
+    if (touched.allOwnKeys && !hasSameOwnKeys(oldSource, newValue)) {
       return true;
     }
 
-    const oldRecord = oldValue as AbstractRecord;
+    const oldRecord = oldSource as AbstractRecord;
     const newRecord = newValue as AbstractRecord;
 
     for (const key of touched.ownKeys) {
@@ -157,7 +159,7 @@ export class ChangeLog {
       setPrototypeOf: throwReadOnly,
 
       get: (target, key) => {
-        if (key === this.kSource) {
+        if (key === kSource) {
           return value;
         }
 
@@ -189,7 +191,9 @@ export class ChangeLog {
   //
 
   private touch(target: object): TouchedEntry {
-    let touched = this.touched.get(target);
+    const source = this.getSource(target);
+
+    let touched = this.touched.get(source);
     if (touched === undefined) {
       touched = {
         keys: new Set(),
@@ -197,9 +201,25 @@ export class ChangeLog {
         self: false,
         allOwnKeys: false,
       };
-      this.touched.set(target, touched);
+      this.touched.set(source, touched);
     }
     return touched;
+  }
+
+  private getSource<Value extends object>(value: Value): Value {
+    let result = value;
+
+    // eslint-disable-next-line no-constant-condition
+    while (true) {
+      const source: Value | undefined = (result as Record<symbol, Value>)[
+        kSource
+      ];
+      if (source === undefined) {
+        break;
+      }
+      result = source;
+    }
+    return result;
   }
 }
 
