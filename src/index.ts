@@ -2,11 +2,6 @@ import { hasSameOwnKeys, throwReadOnly } from './util';
 
 type AbstractRecord = Record<string | symbol, unknown>;
 
-type ProxyMapEntry = Readonly<{
-  proxy: object;
-  revoke(): void;
-}>;
-
 type TouchedEntry = {
   readonly keys: Set<string | symbol>;
   readonly ownKeys: Set<string | symbol>;
@@ -25,8 +20,9 @@ export type WrapAllResult<Values extends ReadonlyArray<unknown>> = Readonly<{
 }>;
 
 export class ChangeLog {
-  private readonly proxyMap = new Map<object, ProxyMapEntry>();
+  private readonly proxyMap = new WeakMap<object, object>();
   private readonly touched = new WeakMap<object, TouchedEntry>();
+  private revokes = new Array<() => void>;
   private readonly kSource: symbol = Symbol('kSource');
 
   protected constructor() {
@@ -84,10 +80,11 @@ export class ChangeLog {
   }
 
   public freeze(): void {
-    for (const { revoke } of this.proxyMap.values()) {
+    const revokes = this.revokes;
+    this.revokes = [];
+    for (const revoke of revokes) {
       revoke();
     }
-    this.proxyMap.clear();
   }
 
   public isChanged<Value>(oldValue: Value, newValue: Value): boolean {
@@ -164,7 +161,7 @@ export class ChangeLog {
     // Return cached proxy
     const entry = this.proxyMap.get(value);
     if (entry !== undefined) {
-      return entry.proxy as Value;
+      return entry as Value;
     }
 
     const { proxy, revoke } = Proxy.revocable(value, {
@@ -198,7 +195,8 @@ export class ChangeLog {
       },
     });
 
-    this.proxyMap.set(value, { proxy, revoke });
+    this.proxyMap.set(value, proxy);
+    this.revokes.push(revoke);
     return proxy as Value;
   }
 
