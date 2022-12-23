@@ -1,4 +1,4 @@
-import { hasSameOwnKeys, throwReadOnly } from './util';
+import { hasSameOwnKeys, throwReadOnly, isObject } from './util';
 
 type AbstractRecord = Record<string | symbol, unknown>;
 
@@ -9,12 +9,12 @@ type TouchedEntry = {
   allOwnKeys: boolean;
 };
 
-export type WrapResult<Value> = Readonly<{
+export type WatchResult<Value> = Readonly<{
   proxy: Value;
   watcher: Watcher;
 }>;
 
-export type WrapAllResult<Values extends ReadonlyArray<unknown>> = Readonly<{
+export type WatchAllResult<Values extends ReadonlyArray<unknown>> = Readonly<{
   proxies: Values;
   watcher: Watcher;
 }>;
@@ -24,13 +24,13 @@ export class Watcher {
   private readonly touched = new WeakMap<object, TouchedEntry>();
   private readonly kSource: symbol = Symbol('kSource');
 
-  private revokes = new Array<() => void>;
+  private revokes = new Array<() => void>();
 
   protected constructor() {
     // disallow constructing directly.
   }
 
-  public static wrap<Value>(value: Value): WrapResult<Value> {
+  public static watch<Value>(value: Value): WatchResult<Value> {
     const watcher = new Watcher();
     return {
       proxy: watcher.track(value),
@@ -38,21 +38,19 @@ export class Watcher {
     };
   }
 
-  public static wrapAll<Values extends ReadonlyArray<unknown>>(
+  public static watchAll<Values extends ReadonlyArray<unknown>>(
     values: Values,
-  ): WrapAllResult<Values> {
+  ): WatchAllResult<Values> {
     const watcher = new Watcher();
     return {
-      proxies: values.map((value) =>
-        watcher.track(value),
-      ) as unknown as Values,
+      proxies: values.map((value) => watcher.track(value)) as unknown as Values,
       watcher,
     };
   }
 
   public unwrap<Result>(result: Result): Result {
-    // Primitives
-    if (result === null || typeof result !== 'object') {
+    // Primitives and functions
+    if (!isObject(result)) {
       return result;
     }
 
@@ -80,7 +78,7 @@ export class Watcher {
     return result;
   }
 
-  public freeze(): void {
+  public stop(): void {
     const revokes = this.revokes;
     this.revokes = [];
     for (const revoke of revokes) {
@@ -89,13 +87,8 @@ export class Watcher {
   }
 
   public isChanged<Value>(oldValue: Value, newValue: Value): boolean {
-    // Primitives
-    if (
-      oldValue === null ||
-      typeof oldValue !== 'object' ||
-      newValue === null ||
-      typeof newValue !== 'object'
-    ) {
+    // Primitives or functions
+    if (!isObject(oldValue) || !isObject(newValue)) {
       return oldValue !== newValue;
     }
 
@@ -154,8 +147,8 @@ export class Watcher {
   //
 
   protected track<Value>(value: Value): Value {
-    // Primitives
-    if (value === null || typeof value !== 'object') {
+    // Primitives or functions
+    if (!isObject(value)) {
       return value;
     }
 
@@ -238,12 +231,73 @@ export class Watcher {
   }
 }
 
-export function wrap<Value>(value: Value): WrapResult<Value> {
-  return Watcher.wrap(value);
+export function watch<Value>(value: Value): WatchResult<Value> {
+  return Watcher.watch(value);
 }
 
-export function wrapAll<Values extends ReadonlyArray<unknown>>(
+export function watchAll<Values extends ReadonlyArray<unknown>>(
   values: Values,
-): WrapAllResult<Values> {
-  return Watcher.wrapAll(values);
+): WatchAllResult<Values> {
+  return Watcher.watchAll(values);
+}
+
+export type MemoizeStats = {
+  hits: number;
+  misses: number;
+};
+
+export function memoize<Params extends ReadonlyArray<unknown>, Result>(
+  fn: (...params: Params) => Result,
+
+  // Mostly for tests
+  stats?: MemoizeStats,
+): (...params: Params) => Result {
+  type CacheEntry = Readonly<{
+    params: Params;
+    watcher: Watcher;
+    result: Result;
+  }>;
+
+  const kGlobal = {};
+
+  const cacheMap = new WeakMap<object, CacheEntry | undefined>();
+  return (...params: Params): Result => {
+    const cacheKey = params.find((param) => isObject(param)) ?? kGlobal;
+    const cached = cacheMap.get(cacheKey) ?? cacheMap.get(kGlobal);
+
+    if (cached !== undefined && cached.params.length === params.length) {
+      let isValid = true;
+      for (let i = 0; i < cached.params.length; i++) {
+        if (cached.watcher.isChanged(cached.params[i], params[i])) {
+          isValid = false;
+          break;
+        }
+      }
+      if (isValid) {
+        if (stats !== undefined) {
+          stats.hits++;
+        }
+        return cached.result;
+      }
+    }
+
+    if (stats !== undefined) {
+      stats.misses++;
+    }
+    const { proxies, watcher } = watchAll(params);
+    const result = watcher.unwrap(fn(...proxies));
+
+    const newCached = {
+      params,
+      watcher,
+      result,
+    };
+
+    cacheMap.set(cacheKey, newCached);
+    if (cacheKey !== kGlobal) {
+      cacheMap.set(kGlobal, newCached);
+    }
+
+    return result;
+  };
 }

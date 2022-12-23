@@ -18,3 +18,7 @@ export function hasSameOwnKeys(a: object, b: object): boolean {
 export function throwReadOnly<Result>(): Result {
   throw new Error('Object is read-only');
 }
+
+export function isObject(value: unknown): value is object {
+  return value !== null && typeof value === 'object';
+}

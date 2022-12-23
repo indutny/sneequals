@@ -1,6 +1,6 @@
 {
-  "name": "@indutny/sneaky-equals",
-  "version": "3.0.2",
+  "name": "@indutny/sneequals",
+  "version": "1.0.0",
   "description": "Sneaky equality check between objects using proxies",
   "main": "dist/src/index.js",
   "types": "dist/src/index.d.ts",
@@ -12,7 +12,8 @@
     "build": "tsc",
     "test": "c8 ava test/*.ts",
     "lint": "eslint --cache .",
-    "format": "prettier --cache --write ."
+    "format": "prettier --cache --write .",
+    "prepublish": "rm -rf dist && npm run build"
   },
   "keywords": [
     "proxy",
@@ -22,12 +23,12 @@
   "license": "MIT",
   "repository": {
     "type": "git",
-    "url": "git+https://github.com/indutny/sneaky-equals.git"
+    "url": "git+https://github.com/indutny/sneequals.git"
   },
   "bugs": {
-    "url": "https://github.com/indutny/sneaky-equals/issues"
+    "url": "https://github.com/indutny/sneequals/issues"
   },
-  "homepage": "https://github.com/indutny/sneaky-equals#readme",
+  "homepage": "https://github.com/indutny/sneequals#readme",
   "ava": {
     "extensions": [
       "ts"

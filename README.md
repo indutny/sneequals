@@ -1,18 +1,22 @@
-# @indutny/sneaky-equals
+# @indutny/sneequals
 
 Sneaky equals comparison between objects that checks only the properties that
 were touched.
 
+Inspired by [proxy-compare](https://github.com/dai-shi/proxy-compare).
+
 ## Installation
 
 ```sh
-npm install @indutny/sneaky-equals
+npm install @indutny/sneequals
 ```
 
 ## Usage
 
+### One object comparison
+
 ```js
-import { wrap } from '@indutny/sneaky-equals';
+import { watch } from '@indutny/sneequals';
 
 const originalData = {
   nested: {
@@ -23,7 +27,7 @@ const originalData = {
   },
 };
 
-const { proxy, watcher } = wrap(originalData);
+const { proxy, watcher } = watch(originalData);
 
 function doSomethingWithData(data) {
   return {
@@ -35,7 +39,7 @@ function doSomethingWithData(data) {
 const result = watcher.unwrap(doSomethingWithData(proxy));
 
 // Prevent further access to proxy
-watcher.freeze();
+watcher.stop();
 
 const sneakyEqualData = {
   nested: {
@@ -58,6 +62,47 @@ const sneakyDifferentData = {
 
 console.log(watcher.isChanged(originalData, sneakyDifferentData)); // true
 ```
+
+### Multi object comparison
+
+```js
+import { watchAll } from '@indutny/sneequals';
+
+const inputA = { a: 1 };
+const inputB = { b: 2 };
+
+const { proxies, watcher } = watchAll([inputA, inputB]);
+
+function fn(a, b) {
+  return a.a + a.b;
+}
+
+const result = watcher.unwrap(fn(...proxies));
+
+// Prevent further access to proxies
+watcher.stop();
+
+console.log(watcher.isChanged(inputA, { a: 1 })); // false
+console.log(watcher.isChanged(inputB, { b: 3 })); // true
+```
+
+### Memoization
+
+`memoize()` is provided as a convenience API method. It has a simple
+WeakMap-based cache that keys by first object argument of the function and/or
+global internal key.
+
+```js
+import { memoize } from '@indutny/sneequals';
+
+const fn = memoize((a, b) => {
+  return a.a + a.b;
+});
+```
+
+## Credits
+
+Name coined by [Scott Nonnenberg](https://github.com/scottnonnenberg/).
 
 ## LICENSE
 
