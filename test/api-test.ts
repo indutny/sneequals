@@ -1,33 +1,31 @@
 import test from 'ava';
 
-import { SneakyEquals } from '../src';
+import { wrap } from '../src';
 
-test('returning sub-property object without accessing it', (t) => {
-  const o = {
+test('placing sub-property object into wrapped result', (t) => {
+  const input = {
     x: {
       y: 1,
     },
     z: 2,
   };
 
-  const s = new SneakyEquals();
+  const { proxy, changelog } = wrap(input);
 
-  const result = s.produce(o, (o) => ({
-    y: o.x.y,
-  }));
+  const derived = changelog.unwrap({
+    y: proxy.x.y,
+  });
+  changelog.freeze();
 
-  t.is(result.y, o.x.y);
-  t.true(s.wasTouched(o), 'object was touched');
-  t.true(s.wasTouched(o.x), 'object.x was touched');
-  t.false(s.wasTouched(o.z), 'object.z was not touched');
+  t.is(derived.y, input.x.y);
 
-  t.false(s.isChanged(o, o), 'object should be equal to itself');
+  t.false(changelog.isChanged(input, input), 'input should be equal to itself');
   t.false(
-    s.isChanged(o, { ...o, z: 3 }),
+    changelog.isChanged(input, { ...input, z: 3 }),
     'unrelated properties should not be taken in account',
   );
   t.false(
-    s.isChanged(o, {
+    changelog.isChanged(input, {
       x: {
         y: 1,
       },
@@ -35,33 +33,43 @@ test('returning sub-property object without accessing it', (t) => {
     }),
     'replacing deeply accessed subojects should not cause invalidation',
   );
+  t.true(
+    changelog.isChanged(input, {
+      x: {
+        y: 2,
+      },
+      z: 3,
+    }),
+    'replacing deeply accessed property should cause invalidation',
+  );
 });
 
-test('returning sub-property object while accessing it', (t) => {
-  const o = {
+test('placing and accessing sub-property object into wrapped result', (t) => {
+  const input = {
     x: {
       y: 1,
     },
     z: 2,
   };
 
-  const s = new SneakyEquals();
+  const { proxy, changelog } = wrap(input);
 
-  const result = s.produce(o, (o) => ({
-    x: o.x,
-    y: o.x.y,
-  }));
+  const derived = changelog.unwrap({
+    x: proxy.x,
+    y: proxy.x.y,
+  });
+  changelog.freeze();
 
-  t.is(result.x, o.x);
-  t.is(result.y, o.x.y);
+  t.is(derived.x, input.x);
+  t.is(derived.y, input.x.y);
 
-  t.false(s.isChanged(o, o), 'object should be equal to itself');
+  t.false(changelog.isChanged(input, input), 'input should be equal to itself');
   t.false(
-    s.isChanged(o, { ...o, z: 3 }),
+    changelog.isChanged(input, { ...input, z: 3 }),
     'unrelated properties should not be taken in account',
   );
   t.true(
-    s.isChanged(o, {
+    changelog.isChanged(input, {
       x: {
         y: 1,
       },
@@ -71,34 +79,43 @@ test('returning sub-property object while accessing it', (t) => {
   );
 });
 
-test('nested producers', (t) => {
-  const o = {
+test('nested wraps', (t) => {
+  const input = {
     x: {
       y: 1,
     },
     z: 2,
   };
 
-  const s = new SneakyEquals();
+  const { proxy: p1, changelog: c1 } = wrap(input);
+  const { proxy: p2, changelog: c2 } = wrap(p1.x);
 
-  const result = s.produce(o, (o) => {
-    return {
-      y: s.produce(o.x, (x) => x.y),
-    };
+  const derived = c1.unwrap({
+    y: c2.unwrap(p2.y),
   });
+  t.is(derived.y, 1);
 
-  t.is(result.y, o.x.y);
-  t.true(s.wasTouched(o), 'object was touched');
-  t.true(s.wasTouched(o.x), 'object.x was touched');
-  t.false(s.wasTouched(o.z), 'object.z was not touched');
+  c2.freeze();
 
-  t.false(s.isChanged(o, o), 'object should be equal to itself');
+  t.false(c2.isChanged(p1.x, p1.x), 'outer: input should be equal to itself');
   t.false(
-    s.isChanged(o, { ...o, z: 3 }),
+    c2.isChanged(p1.x, { y: 1 }),
+    'outer: input should be equal to its copy',
+  );
+  t.true(
+    c2.isChanged(p1.x, { y: 2 }),
+    'outer: different value should be detected',
+  );
+
+  c1.freeze();
+
+  t.false(c1.isChanged(input, input), 'inner: input should be equal to itself');
+  t.false(
+    c1.isChanged(input, { ...input, z: 3 }),
     'unrelated properties should not be taken in account',
   );
   t.false(
-    s.isChanged(o, {
+    c1.isChanged(input, {
       x: {
         y: 1,
       },
@@ -106,30 +123,45 @@ test('nested producers', (t) => {
     }),
     'replacing deeply accessed subojects should not cause invalidation',
   );
+  t.true(
+    c1.isChanged(input, {
+      x: {
+        y: 2,
+      },
+      z: 3,
+    }),
+    'replacing deeply accessed property should cause invalidation',
+  );
 });
 
 test('comparing arrays', (t) => {
-  const s = new SneakyEquals();
-
-  const arr = [{ x: 1 }, { x: 2 }];
-  const derived = s.produce(arr, (arr) => ({
-    x: arr[1]?.x,
-  }));
+  const input: Array<{ x: number; y?: number }> = [{ x: 1 }, { x: 2 }];
+  const { proxy, changelog } = wrap(input);
+  const derived = changelog.unwrap({
+    x: proxy[1]?.x,
+  });
+  changelog.freeze();
 
   t.is(derived.x, 2);
 
-  t.true(s.wasTouched(arr), 'was touched');
-  t.false(s.wasTouched(arr[0]), "[0] wasn't touched");
-  t.true(s.wasTouched(arr[1]), '[1] was touched');
-
-  t.false(s.isChanged(arr, arr), 'same array');
-  t.false(s.isChanged(arr, [{ x: 3 }, { x: 2 }]), 'same property');
-  t.true(s.isChanged(arr, [{ x: 3 }, { x: 3 }]), 'different property');
-  t.true(s.isChanged(arr, [{ x: 3 }]), 'different length');
+  t.false(changelog.isChanged(input, input), 'same input');
+  t.false(
+    changelog.isChanged(input, [{ x: 3 }, { x: 2 }]),
+    'same property at [1]',
+  );
+  t.false(
+    changelog.isChanged(input, [{ x: 3 }, { x: 2, y: 3 }]),
+    'extra property at [1]',
+  );
+  t.true(
+    changelog.isChanged(input, [{ x: 3 }, { x: 3 }]),
+    'different property at [1]',
+  );
+  t.true(changelog.isChanged(input, [{ x: 3 }]), 'different length');
 });
 
-test('accessing ownKeys', (t) => {
-  const o: Partial<{
+test('accessing own keys', (t) => {
+  const input: Partial<{
     a: number;
     b: number;
     c: number;
@@ -138,87 +170,140 @@ test('accessing ownKeys', (t) => {
     b: 2,
   };
 
-  const s = new SneakyEquals();
+  const { proxy, changelog } = wrap(input);
+  const derived = changelog.unwrap({
+    keys: Reflect.ownKeys(proxy).sort(),
+  });
+  changelog.freeze();
 
-  const result = s.produce(o, (o) => ({
-    keys: Reflect.ownKeys(o).sort(),
-  }));
+  t.deepEqual(derived.keys, ['a', 'b']);
 
-  t.deepEqual(result.keys, ['a', 'b']);
+  t.false(changelog.isChanged(input, input), 'input should be equal to itself');
+  t.false(
+    changelog.isChanged(input, { a: 2, b: 3 }),
+    'changed values should not trigger invalidation',
+  );
 
-  t.false(s.isChanged(o, o), 'object should be equal to itself');
+  const cInProto = new (class X {
+    a = 1;
+    b = 1;
+
+    public get c() {
+      return 2;
+    }
+  })();
+  t.false(
+    changelog.isChanged(input, cInProto),
+    'different prototype keys should not trigger invalidation',
+  );
+
   t.true(
-    s.isChanged(o, { a: 1, b: 2, c: 3 }),
+    changelog.isChanged(input, { a: 1, b: 2, c: 3 }),
     'added keys should trigger invalidation',
   );
-  t.true(s.isChanged(o, { a: 1 }), 'removed keys should trigger invalidation');
   t.true(
-    s.isChanged(o, { b: 2, c: 3 }),
+    changelog.isChanged(input, { a: 1 }),
+    'removed keys should trigger invalidation',
+  );
+  t.true(
+    changelog.isChanged(input, { b: 2, c: 3 }),
     'different keys should trigger invalidation',
   );
-  t.false(
-    s.isChanged(o, { a: 2, b: 3 }),
-    'changed values should not trigger invalidation',
+
+  const bInProto = new (class X {
+    a = 1;
+
+    public get b() {
+      return 2;
+    }
+
+    c = 1;
+  })();
+  t.true(
+    changelog.isChanged(input, bInProto),
+    'missing own keys present in prototype should trigger invalidation',
   );
 });
 
-test('comparing primitives', (t) => {
-  const s = new SneakyEquals();
+test('comparing untracked primitives', (t) => {
+  const { changelog } = wrap({});
+  changelog.freeze();
 
-  t.false(s.isChanged(true, true));
-  t.true(s.isChanged(true, false));
-  t.false(s.isChanged(null, null));
-  t.true(s.isChanged(null, { a: 1 }));
+  t.false(changelog.isChanged(true, true));
+  t.true(changelog.isChanged(true, false));
+  t.false(changelog.isChanged(null, null));
+  t.true(changelog.isChanged(null, { a: 1 }));
 });
 
 test('comparing untracked objects', (t) => {
-  const s = new SneakyEquals();
+  const { changelog } = wrap({});
+  changelog.freeze();
 
-  t.false(s.isChanged({}, {}));
+  t.false(changelog.isChanged({}, {}));
 
-  const o = {};
-  t.false(s.isChanged(o, o));
+  const same = {};
+  t.false(changelog.isChanged(same, same));
 });
 
 test('it supports "in"', (t) => {
-  const o: Partial<{ a: number; b: number }> = { a: 1 };
+  const input: Partial<{ a: number; b: number }> = { a: 1 };
 
-  const s = new SneakyEquals();
+  const { proxy, changelog } = wrap(input);
 
-  const result = s.produce(o, (o) => ({
-    has: 'a' in o ? true : undefined,
-  }));
+  const derived = changelog.unwrap({
+    hasA: 'a' in proxy ? true : undefined,
+  });
 
-  t.true(result.has);
+  t.true(derived.hasA);
 
-  t.false(s.isChanged(o, { a: 1 }), 'copied object is the same');
-  t.false(s.isChanged(o, { a: 1, b: 2 }), 'new properties are ignored');
-  t.true(s.isChanged(o, { a: 2 }), 'changed property is not ignored');
+  t.false(changelog.isChanged(input, { a: 1 }), 'copied input is the same');
+  t.false(
+    changelog.isChanged(input, { a: 1, b: 2 }),
+    'new properties are ignored',
+  );
+  t.true(
+    changelog.isChanged(input, { a: 2 }),
+    'changed property is not ignored',
+  );
 });
 
-test('it deoptimizes on "hasOwn"', (t) => {
-  const o: Partial<{ a: number; b: number }> = { a: 1 };
+test('own property descriptor access', (t) => {
+  const input: Partial<{ a: number; b: number }> = { a: 1 };
 
-  const s = new SneakyEquals();
+  const { proxy, changelog } = wrap(input);
 
-  const result = s.produce(o, (o) => ({
-    has: Object.hasOwn(o, 'a'),
-    a: o.a,
-  }));
+  const derived = changelog.unwrap({
+    hasA: Object.hasOwn(proxy, 'a'),
+    hasB: Object.hasOwn(proxy, 'b'),
+    a: proxy.a,
+  });
 
-  t.true(result.has);
-  t.is(result.a, o.a);
+  t.true(derived.hasA);
+  t.false(derived.hasB);
+  t.is(derived.a, input.a);
 
-  t.false(s.isChanged(o, o), 'self comparison returns true');
-  t.true(s.isChanged(o, { a: 1 }), 'copied object is not the same');
+  t.false(changelog.isChanged(input, input), 'self comparison returns true');
+  t.false(changelog.isChanged(input, { a: 1 }), 'same own property');
+
+  t.true(changelog.isChanged(input, { a: 2 }), 'different own property');
+  const aInProto = new (class X {
+    public get a() {
+      return 1;
+    }
+
+    b = 2;
+  })();
+  t.true(changelog.isChanged(input, aInProto), 'not own property anymore');
+  t.true(
+    changelog.isChanged(input, { a: 1, b: 2 }),
+    'old property not in proto',
+  );
 });
 
-test('it throws on updates', (t) => {
-  const o: Partial<{ a: number; b: number }> = { a: 1 };
+test('disallowed updates', (t) => {
+  const input: Partial<{ a: number; b: number }> = { a: 1 };
 
-  const s = new SneakyEquals();
-
-  t.throws(() => s.produce(o, (o) => (o.a = 1)));
-  t.throws(() => s.produce(o, (o) => delete o.a));
-  t.throws(() => s.produce(o, (o) => Object.defineProperty(o, 'a', {})));
+  t.throws(() => (wrap(input).proxy.a = 1));
+  t.throws(() => delete wrap(input).proxy.a);
+  t.throws(() => Object.defineProperty(wrap(input).proxy, 'a', {}));
 });

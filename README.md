@@ -12,9 +12,7 @@ npm install @indutny/sneaky-equals
 ## Usage
 
 ```js
-import { SneakyEquals } from '@indutny/sneaky-equals';
-
-const s = new SneakyEquals();
+import { wrap } from '@indutny/sneaky-equals';
 
 const originalData = {
   nested: {
@@ -25,6 +23,8 @@ const originalData = {
   },
 };
 
+const { proxy, changelog } = wrap(originalData);
+
 function doSomethingWithData(data) {
   return {
     prop: data.nested.prop,
@@ -32,10 +32,10 @@ function doSomethingWithData(data) {
   };
 }
 
-const proxy = s.track(originalData);
-const result = s.unwrap(doSomethingWithData(proxy));
+const result = changelog.unwrap(doSomethingWithData(proxy));
 
-// proxy is revoked after `s.unwrap()`
+// Prevent further access to proxy
+changelog.freeze();
 
 const sneakyEqualData = {
   nested: {
@@ -45,7 +45,7 @@ const sneakyEqualData = {
   avatar: original.avatar,
 };
 
-console.log(s.isEqual(originalData, sneakyEqualData)); // true
+console.log(changelog.isEqual(originalData, sneakyEqualData)); // true
 
 const sneakyDifferentData = {
   nested: {
@@ -56,7 +56,7 @@ const sneakyDifferentData = {
   },
 };
 
-console.log(s.isEqual(originalData, sneakyDifferentData)); // false
+console.log(changelog.isEqual(originalData, sneakyDifferentData)); // false
 ```
 
 ## LICENSE

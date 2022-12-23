@@ -1,10 +1,4 @@
-const throwReadOnly = () => {
-  throw new Error('Object is read-only');
-};
-
-const kSource: unique symbol = Symbol('kSource');
-const kSelf: unique symbol = Symbol('kSelf');
-const kOwnKeys: unique symbol = Symbol('kOwnKeys');
+import { hasSameOwnKeys, throwReadOnly } from './util';
 
 type AbstractRecord = Record<string | symbol, unknown>;
 
@@ -13,38 +7,71 @@ type ProxyMapEntry = Readonly<{
   revoke(): void;
 }>;
 
-export class SneakyEquals {
-  private readonly proxyMap = new Map<object, ProxyMapEntry>();
-  private readonly touched = new WeakMap<
-    object,
-    Set<string | symbol> | typeof kSelf
-  >();
-  private depth = 0;
+type TouchedEntry = {
+  readonly keys: Set<string | symbol>;
+  readonly ownKeys: Set<string | symbol>;
+  self: boolean;
+  allOwnKeys: boolean;
+};
 
-  public produce<Input, Output>(
-    input: Input,
-    producer: (input: Input) => Output,
-  ): Output {
-    try {
-      this.depth++;
-      return this.unwrap(producer(this.track(input)));
-    } finally {
-      // We are top-level caller - revoke all proxies
-      if (--this.depth === 0) {
-        for (const { revoke } of this.proxyMap.values()) {
-          revoke();
-        }
-        this.proxyMap.clear();
-      }
-    }
+export type WrapResult<Value> = Readonly<{
+  proxy: Value;
+  changelog: ChangeLog;
+}>;
+
+export class ChangeLog {
+  private readonly kSource = Symbol('kSource');
+
+  private readonly proxyMap = new Map<object, ProxyMapEntry>();
+  private readonly touched = new WeakMap<object, TouchedEntry>();
+
+  protected constructor() {
+    // disallow constructing directly.
   }
 
-  public wasTouched<Value>(oldValue: Value): boolean {
+  public static wrap<Value>(value: Value): WrapResult<Value> {
+    const changelog = new ChangeLog();
+    return {
+      proxy: changelog.track(value),
+      changelog,
+    };
+  }
+
+  public unwrap<Result>(result: Result): Result {
     // Primitives
-    if (oldValue === null || typeof oldValue !== 'object') {
-      return false;
+    if (result === null || typeof result !== 'object') {
+      return result;
     }
-    return this.touched.has(oldValue);
+
+    const source: Result | undefined = (result as Record<symbol, Result>)[
+      this.kSource
+    ];
+    if (source !== undefined) {
+      return source;
+    }
+
+    // Generated object
+    for (const key of Reflect.ownKeys(result)) {
+      const value = (result as AbstractRecord)[key];
+      const unwrappedValue = this.unwrap(value);
+      if (unwrappedValue !== value) {
+        // It is safe to update the result since it is a generated object.
+        (result as AbstractRecord)[key] = unwrappedValue;
+
+        this.touched.get(result);
+        this.touch(result).keys.add(key);
+        this.touch(unwrappedValue as object).self = true;
+      }
+    }
+
+    return result;
+  }
+
+  public freeze(): void {
+    for (const { revoke } of this.proxyMap.values()) {
+      revoke();
+    }
+    this.proxyMap.clear();
   }
 
   public isChanged<Value>(oldValue: Value, newValue: Value): boolean {
@@ -71,23 +98,34 @@ export class SneakyEquals {
     }
 
     // We checked that the objects are different above.
-    if (touched === kSelf) {
+    if (touched.self) {
       return true;
     }
 
-    for (const key of touched) {
-      if (key === kOwnKeys) {
-        if (!hasSameOwnValues(oldValue, newValue)) {
-          return true;
-        }
+    if (touched.allOwnKeys && !hasSameOwnKeys(oldValue, newValue)) {
+      return true;
+    }
+
+    const oldRecord = oldValue as AbstractRecord;
+    const newRecord = newValue as AbstractRecord;
+
+    for (const key of touched.ownKeys) {
+      const hasOld = Object.hasOwn(oldRecord, key);
+      const hasNew = Object.hasOwn(newRecord, key);
+      if (hasOld !== hasNew) {
+        return true;
+      }
+      if (!hasOld) {
+        continue;
       }
 
-      const areDifferent = this.isChanged(
-        (oldValue as AbstractRecord)[key],
-        (newValue as AbstractRecord)[key],
-      );
+      if (this.isChanged(oldRecord[key], newRecord[key])) {
+        return true;
+      }
+    }
 
-      if (areDifferent) {
+    for (const key of touched.keys) {
+      if (this.isChanged(oldRecord[key], newRecord[key])) {
         return true;
       }
     }
@@ -95,14 +133,14 @@ export class SneakyEquals {
     return false;
   }
 
-  private track<Value>(value: Value): Value {
+  //
+  // Protected
+  //
+
+  protected track<Value>(value: Value): Value {
     // Primitives
     if (value === null || typeof value !== 'object') {
       return value;
-    }
-
-    if ((value as AbstractRecord)[kSource] !== undefined) {
-      return this.track((value as AbstractRecord)[kSource] as Value);
     }
 
     // Return cached proxy
@@ -119,100 +157,52 @@ export class SneakyEquals {
       setPrototypeOf: throwReadOnly,
 
       get: (target, key) => {
-        if (key === kSource) {
+        if (key === this.kSource) {
           return value;
         }
 
-        this.touch(target, key);
+        this.touch(target).keys.add(key);
 
         const result = (target as AbstractRecord)[key];
         return this.track(result);
       },
       getOwnPropertyDescriptor: (target, key) => {
-        // TODO(indutny): dont' "deoptimize" this.
-        this.touch(target, kSelf);
+        this.touch(target).ownKeys.add(key);
         return Object.getOwnPropertyDescriptor(target, key);
       },
       has: (target, key) => {
-        this.touch(target, key);
+        this.touch(target).keys.add(key);
         return key in target;
       },
       ownKeys: (target) => {
-        this.touch(target, kOwnKeys);
+        this.touch(target).allOwnKeys = true;
         return Reflect.ownKeys(target);
       },
     });
 
     this.proxyMap.set(value, { proxy, revoke });
-    this.touched.set(value, new Set());
     return proxy as Value;
   }
 
-  private unwrap<Result>(wrapped: Result): Result {
-    // Primitives
-    if (wrapped === null || typeof wrapped !== 'object') {
-      return wrapped;
-    }
+  //
+  // Private
+  //
 
-    const source: Result | undefined = (wrapped as Record<symbol, Result>)[
-      kSource
-    ];
-
-    let result = source ?? wrapped;
-    let isCopied = false;
-
-    for (const key of Reflect.ownKeys(result)) {
-      const value = (result as AbstractRecord)[key];
-      const unwrappedValue = this.unwrap(value);
-      if (unwrappedValue !== value) {
-        if (!isCopied) {
-          result = { ...result };
-          isCopied = true;
-        }
-
-        (result as AbstractRecord)[key] = unwrappedValue;
-
-        this.touch(result, key);
-        this.touch(unwrappedValue as object, kSelf);
-      }
-    }
-
-    return result;
-  }
-
-  private touch(target: object, key: string | symbol | typeof kSelf): void {
-    const touched = this.touched.get(target);
+  private touch(target: object): TouchedEntry {
+    let touched = this.touched.get(target);
     if (touched === undefined) {
-      return;
+      touched = {
+        keys: new Set(),
+        ownKeys: new Set(),
+        self: false,
+        allOwnKeys: false,
+      };
+      this.touched.set(target, touched);
     }
-
-    if (key === kSelf) {
-      this.touched.set(target, key as typeof kSelf);
-      return;
-    }
-
-    // Already in terminal state
-    if (touched === kSelf) {
-      return;
-    }
-
-    touched.add(key);
+    return touched;
   }
 }
 
-function hasSameOwnValues(a: object, b: object): boolean {
-  const aKeys = Reflect.ownKeys(a);
-  const bKeys = Reflect.ownKeys(b);
-
-  if (aKeys.length !== bKeys.length) {
-    return false;
-  }
-
-  for (let i = 0; i < aKeys.length; i++) {
-    if (aKeys[i] !== bKeys[i]) {
-      return false;
-    }
-  }
-
-  return true;
+export function wrap<Value>(value: Value): WrapResult<Value> {
+  return ChangeLog.wrap(value);
 }
