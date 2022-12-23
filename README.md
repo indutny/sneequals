@@ -45,7 +45,7 @@ const sneakyEqualData = {
   avatar: original.avatar,
 };
 
-console.log(changelog.isEqual(originalData, sneakyEqualData)); // true
+console.log(changelog.isChanged(originalData, sneakyEqualData)); // false
 
 const sneakyDifferentData = {
   nested: {
@@ -56,7 +56,7 @@ const sneakyDifferentData = {
   },
 };
 
-console.log(changelog.isEqual(originalData, sneakyDifferentData)); // false
+console.log(changelog.isChanged(originalData, sneakyDifferentData)); // true
 ```
 
 ## LICENSE
