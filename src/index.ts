@@ -199,18 +199,18 @@ export class Watcher {
 
         this.touch(target).keys.add(key);
 
-        const result = (target as AbstractRecord)[key];
+        const result = Reflect.get(target, key);
         return this.track(result);
       },
       getOwnPropertyDescriptor: (target, key) => {
         if (key !== kSource) {
           this.touch(target).ownKeys.add(key);
         }
-        return Object.getOwnPropertyDescriptor(target, key);
+        return Reflect.getOwnPropertyDescriptor(target, key);
       },
       has: (target, key) => {
         this.touch(target).keys.add(key);
-        return key in target;
+        return Reflect.has(target, key);
       },
       ownKeys: (target) => {
         this.touch(target).allOwnKeys = true;
