@@ -142,6 +142,12 @@ export class Watcher {
     return false;
   }
 
+  public getAffectedPaths(value: unknown): Array<string> {
+    const out = new Array<string>();
+    this.getAffectedPathsInto(value, '$', out);
+    return out;
+  }
+
   //
   // Protected
   //
@@ -228,6 +234,52 @@ export class Watcher {
       result = source;
     }
     return result;
+  }
+
+  private getAffectedPathsInto(
+    value: unknown,
+    path: string,
+    out: Array<string>,
+  ): void {
+    if (!isObject(value)) {
+      if (path !== '$') {
+        out.push(path);
+      }
+      return;
+    }
+
+    const source = this.getSource(value);
+    const touched = this.touched.get(source);
+
+    if (touched === undefined) {
+      return;
+    }
+
+    if (touched.self) {
+      out.push(path);
+      return;
+    }
+
+    if (touched.allOwnKeys) {
+      out.push(`${path}[*]`);
+    }
+
+    const record = source as AbstractRecord;
+    for (const key of touched.ownKeys) {
+      const hasOwn = Object.hasOwn(record, key);
+      const subPath = `${path}>${String(key)}`;
+
+      if (!hasOwn) {
+        out.push(subPath);
+        continue;
+      }
+
+      this.getAffectedPathsInto(record[key], subPath, out);
+    }
+
+    for (const key of touched.keys) {
+      this.getAffectedPathsInto(record[key], `${path}.${String(key)}`, out);
+    }
   }
 }
 
