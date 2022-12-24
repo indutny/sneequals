@@ -336,7 +336,6 @@ export function memoize<Params extends ReadonlyArray<unknown>, Result>(
 
     const { proxies, watcher } = watchAll(params);
     const result = watcher.unwrap(fn(...proxies));
-    watcher.stop();
 
     if (stats?.onAdd) {
       stats.onAdd(...params.map((param) => watcher.getAffectedPaths(param)));
