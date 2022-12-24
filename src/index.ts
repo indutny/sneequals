@@ -140,18 +140,23 @@ export class Watcher {
     const newRecord = newValue as AbstractRecord;
 
     for (const key of touched.ownKeys) {
-      const hasOld = Object.hasOwn(oldRecord, key);
-      const hasNew = Object.hasOwn(newRecord, key);
+      const hasOld =
+        Reflect.getOwnPropertyDescriptor(oldRecord, key) !== undefined;
+      const hasNew =
+        Reflect.getOwnPropertyDescriptor(newRecord, key) !== undefined;
+
       if (hasOld !== hasNew) {
         return true;
       }
-      if (!hasOld) {
-        continue;
-      }
 
-      if (this.isChanged(oldRecord[key], newRecord[key])) {
-        return true;
-      }
+      // For simplicity we assume that `getOwnPropertyDescriptor` is used only
+      // as a check for property presence and not for the actual
+      // value/configurable/enumerable present in the descriptor.
+      //
+      // It is called after each [[Get]] so if it is not presence check -
+      // the key should be also in `touched.keys`.
+      //
+      // See: https://262.ecma-international.org/6.0/#sec-proxy-object-internal-methods-and-internal-slots
     }
 
     for (const key of touched.keys) {
@@ -206,6 +211,7 @@ export class Watcher {
         if (key !== kSource) {
           this.touch(target).ownKeys.add(key);
         }
+
         return Reflect.getOwnPropertyDescriptor(target, key);
       },
       has: (target, key) => {

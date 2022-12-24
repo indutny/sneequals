@@ -110,9 +110,9 @@ On M1 Macbook Pro 13:
 
 ```sh
 $ npm run bench
-watch+unwrap: 554431.062 operations/second
-isChanged: 4575487.253 operations/second
-memoize: 4070533.538 operations/second
+watch+unwrap: 854407.107 operations/second
+isChanged: 4066415.413 operations/second
+memoize: 3499422.737 operations/second
 ```
 
 ## Credits
