@@ -115,3 +115,35 @@ test('unused params', (t) => {
   t.deepEqual(fn({ x: 1, y: 3 }, { y: 4 }), { x: 1, y: 3 }, 'cache miss');
   t.is(stats.result, 'miss');
 });
+
+test('nested calls', (t) => {
+  type Input = Partial<{
+    x: number | undefined;
+    y: number | undefined;
+  }>;
+
+  const innerStats = new Stats();
+  const inner = memoize((a: Input): number | undefined => {
+    return a.x;
+  }, innerStats);
+
+  const outerStats = new Stats();
+  const outer = memoize(
+    // eslint-disable-next-line @typescript-eslint/no-unused-vars
+    (a: Input): number | undefined => inner(a),
+    outerStats,
+  );
+
+  t.is(outer({ x: 1, y: 2 }), 1, 'cache miss');
+  t.is(innerStats.result, 'miss');
+  t.is(outerStats.result, 'miss');
+  t.snapshot(innerStats.getAffectedPaths(0), 'first inner parameter paths');
+  t.snapshot(outerStats.getAffectedPaths(0), 'first outer parameter paths');
+
+  t.deepEqual(outer({ x: 1, y: 3 }), 1, 'cache hit');
+  t.is(outerStats.result, 'hit');
+
+  t.deepEqual(outer({ x: 2, y: 2 }), 2, 'cache miss');
+  t.is(innerStats.result, 'miss');
+  t.is(outerStats.result, 'miss');
+});

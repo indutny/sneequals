@@ -19,10 +19,31 @@ export type WatchAllResult<Values extends ReadonlyArray<unknown>> = Readonly<{
   watcher: Watcher;
 }>;
 
+const kSource: unique symbol = Symbol('kSource');
+
+function getSource<Value>(value: Value): Value {
+  if (!isObject(value)) {
+    return value;
+  }
+
+  let result: object = value;
+
+  // eslint-disable-next-line no-constant-condition
+  while (true) {
+    const source: object | undefined = (result as Record<symbol, object>)[
+      kSource
+    ];
+    if (source === undefined) {
+      break;
+    }
+    result = source;
+  }
+  return result as Value;
+}
+
 export class Watcher {
   private readonly proxyMap = new WeakMap<object, object>();
   private readonly touched = new WeakMap<object, TouchedEntry>();
-  private readonly kSource: symbol = Symbol('kSource');
 
   private revokes = new Array<() => void>();
 
@@ -54,7 +75,7 @@ export class Watcher {
       return result;
     }
 
-    const source = this.getSource(result);
+    const source = getSource(result);
 
     // If it was a proxy - just unwrap it
     if (source !== result) {
@@ -92,7 +113,7 @@ export class Watcher {
       return oldValue !== newValue;
     }
 
-    const oldSource = this.getSource(oldValue);
+    const oldSource = getSource(oldValue);
 
     // Fast case!
     if (oldSource === newValue) {
@@ -172,7 +193,7 @@ export class Watcher {
       setPrototypeOf: throwReadOnly,
 
       get: (target, key) => {
-        if (key === this.kSource) {
+        if (key === kSource) {
           return value;
         }
 
@@ -205,7 +226,7 @@ export class Watcher {
   //
 
   private touch(target: object): TouchedEntry {
-    const source = this.getSource(target);
+    const source = getSource(target);
 
     let touched = this.touched.get(source);
     if (touched === undefined) {
@@ -220,22 +241,6 @@ export class Watcher {
     return touched;
   }
 
-  private getSource<Value extends object>(value: Value): Value {
-    let result = value;
-
-    // eslint-disable-next-line no-constant-condition
-    while (true) {
-      const source: Value | undefined = (result as Record<symbol, Value>)[
-        this.kSource
-      ];
-      if (source === undefined) {
-        break;
-      }
-      result = source;
-    }
-    return result;
-  }
-
   private getAffectedPathsInto(
     value: unknown,
     path: string,
@@ -248,7 +253,7 @@ export class Watcher {
       return;
     }
 
-    const source = this.getSource(value);
+    const source = getSource(value);
     const touched = this.touched.get(source);
 
     if (touched === undefined) {
@@ -306,7 +311,7 @@ export function memoize<Params extends ReadonlyArray<unknown>, Result>(
   stats?: MemoizeStats,
 ): (...params: Params) => Result {
   type CacheEntry = Readonly<{
-    params: Params;
+    sources: Params;
     watcher: Watcher;
     result: Result;
   }>;
@@ -315,13 +320,16 @@ export function memoize<Params extends ReadonlyArray<unknown>, Result>(
 
   const cacheMap = new WeakMap<object, CacheEntry | undefined>();
   return (...params: Params): Result => {
-    const cacheKey = params.find((param) => isObject(param)) ?? kGlobal;
+    const sources = params.map((param) =>
+      getSource(param),
+    ) as unknown as Params;
+    const cacheKey = sources.find((source) => isObject(source)) ?? kGlobal;
     const cached = cacheMap.get(cacheKey) ?? cacheMap.get(kGlobal);
 
-    if (cached !== undefined && cached.params.length === params.length) {
+    if (cached !== undefined && cached.sources.length === sources.length) {
       let isValid = true;
-      for (let i = 0; i < cached.params.length; i++) {
-        if (cached.watcher.isChanged(cached.params[i], params[i])) {
+      for (let i = 0; i < cached.sources.length; i++) {
+        if (cached.watcher.isChanged(cached.sources[i], sources[i])) {
           isValid = false;
           break;
         }
@@ -336,13 +344,14 @@ export function memoize<Params extends ReadonlyArray<unknown>, Result>(
 
     const { proxies, watcher } = watchAll(params);
     const result = watcher.unwrap(fn(...proxies));
+    watcher.stop();
 
     if (stats?.onAdd) {
-      stats.onAdd(...params.map((param) => watcher.getAffectedPaths(param)));
+      stats.onAdd(...sources.map((param) => watcher.getAffectedPaths(param)));
     }
 
     const newCached = {
-      params,
+      sources,
       watcher,
       result,
     };
