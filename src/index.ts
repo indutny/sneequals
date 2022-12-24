@@ -203,7 +203,9 @@ export class Watcher {
         return this.track(result);
       },
       getOwnPropertyDescriptor: (target, key) => {
-        this.touch(target).ownKeys.add(key);
+        if (key !== kSource) {
+          this.touch(target).ownKeys.add(key);
+        }
         return Object.getOwnPropertyDescriptor(target, key);
       },
       has: (target, key) => {
