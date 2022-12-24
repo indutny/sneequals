@@ -109,10 +109,14 @@ const fn = memoize((a, b) => {
 On M1 Macbook Pro 13:
 
 ```sh
-$ npm run bench
-watch+unwrap: 860905.7 (±2994.2, n=245, p=0.01) operations/second
-isChanged: 4644631.2 (±27056.8, n=236, p=0.01) operations/second
-memoize: 3654894.5 (±8866.4, n=234, p=0.01) operations/second
+% npm run bench
+
+> @indutny/sneequals@1.3.5 bench
+> bencher dist/benchmarks/*.js
+
+isChanged: 5354299.7 ops/s (±40688.1, p=0.05, n=99)
+memoize: 4484613.9 ops/s (±27752.1, p=0.05, n=97)
+watch+unwrap: 860247.9 ops/s (±6990.9, p=0.05, n=100)
 ```
 
 ## Credits

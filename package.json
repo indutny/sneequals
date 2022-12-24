@@ -15,7 +15,7 @@
     "format": "prettier --cache --write .",
     "check:format": "prettier --cache --check .",
     "prepublish": "rm -rf dist && npm run build",
-    "bench": "ts-node benchmarks/index.ts"
+    "bench": "bencher dist/benchmarks/*.js"
   },
   "keywords": [
     "proxy",
@@ -40,6 +40,7 @@
     ]
   },
   "devDependencies": {
+    "@indutny/bencher": "^1.0.0-rc.1",
     "@typescript-eslint/eslint-plugin": "^5.47.0",
     "@typescript-eslint/parser": "^5.47.0",
     "ava": "^5.1.0",
