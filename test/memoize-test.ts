@@ -6,25 +6,34 @@ type StatsResult = 'hit' | 'miss' | undefined;
 
 class Stats implements MemoizeStats {
   private privResult: StatsResult;
+  private paramPaths: Array<ReadonlyArray<string>> | undefined;
 
-  public onHit() {
+  public onHit(): void {
     if (this.privResult !== undefined) {
       throw new Error('Stats not clean');
     }
     this.privResult = 'hit';
   }
 
-  public onMiss() {
+  public onMiss(): void {
     if (this.privResult !== undefined) {
       throw new Error('Stats not clean');
     }
     this.privResult = 'miss';
   }
 
+  public onAdd(...paramPaths: Array<ReadonlyArray<string>>): void {
+    this.paramPaths = paramPaths;
+  }
+
   public get result(): StatsResult {
     const result = this.privResult;
     this.privResult = undefined;
     return result;
+  }
+
+  public getAffectedPaths(index: number): ReadonlyArray<string> | undefined {
+    return this.paramPaths?.[index];
   }
 }
 
@@ -60,6 +69,8 @@ test('memoizing objects', (t) => {
 
   t.deepEqual(fn(first, { y: 2 }), { x: 1, y: 2 }, 'cache miss');
   t.is(stats.result, 'miss');
+  t.snapshot(stats.getAffectedPaths(0), 'first parameter paths');
+  t.snapshot(stats.getAffectedPaths(1), 'second parameter paths');
 
   t.deepEqual(
     fn({ x: 1, y: -1 }, { x: -1, y: 2 }),
@@ -95,6 +106,8 @@ test('unused params', (t) => {
 
   t.deepEqual(fn({ x: 1, y: 2 }, { y: 3 }), { x: 1, y: 2 }, 'cache miss');
   t.is(stats.result, 'miss');
+  t.snapshot(stats.getAffectedPaths(0), 'first parameter paths');
+  t.snapshot(stats.getAffectedPaths(1), 'second parameter paths');
 
   t.deepEqual(fn({ x: 1, y: 2 }, { y: 4 }), { x: 1, y: 2 }, 'cache hit');
   t.is(stats.result, 'hit');

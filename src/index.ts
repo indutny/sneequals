@@ -296,6 +296,7 @@ export function watchAll<Values extends ReadonlyArray<unknown>>(
 export interface MemoizeStats {
   onHit?(): void;
   onMiss?(): void;
+  onAdd?(...paths: Array<ReadonlyArray<string>>): void;
 }
 
 export function memoize<Params extends ReadonlyArray<unknown>, Result>(
@@ -332,8 +333,14 @@ export function memoize<Params extends ReadonlyArray<unknown>, Result>(
     }
 
     stats?.onMiss?.();
+
     const { proxies, watcher } = watchAll(params);
     const result = watcher.unwrap(fn(...proxies));
+    watcher.stop();
+
+    if (stats?.onAdd) {
+      stats.onAdd(...params.map((param) => watcher.getAffectedPaths(param)));
+    }
 
     const newCached = {
       params,
