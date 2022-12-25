@@ -4,6 +4,7 @@
   "description": "Sneaky equality check between objects using proxies",
   "main": "dist/src/index.js",
   "module": "dist/esm/src/index.js",
+  "sideEffects": false,
   "types": "dist/src/index.d.ts",
   "files": [
     "dist/src",
