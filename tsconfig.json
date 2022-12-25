@@ -10,6 +10,7 @@
 
     /* Modules */
     "module": "commonjs" /* Specify what module code is generated. */,
+    "moduleResolution": "node",
 
     /* Emit */
     "declaration": true,

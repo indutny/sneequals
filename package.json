@@ -3,18 +3,23 @@
   "version": "1.3.6",
   "description": "Sneaky equality check between objects using proxies",
   "main": "dist/src/index.js",
+  "module": "dist/esm/src/index.js",
   "types": "dist/src/index.d.ts",
   "files": [
     "dist/src",
+    "dist/esm/src",
     "README.md"
   ],
   "scripts": {
-    "build": "tsc",
+    "build": "npm run build:cjs && npm run build:esm",
+    "build:cjs": "tsc",
+    "build:esm": "tsc --module es2020 --outDir dist/esm",
     "test": "c8 ava test/*.ts",
-    "lint": "eslint --cache .",
     "format": "prettier --cache --write .",
+    "lint": "npm run check:eslint && npm run check:format",
+    "check:eslint": "eslint --cache .",
     "check:format": "prettier --cache --check .",
-    "prepublish": "npm run clean dist && npm run build",
+    "prepublish": "npm run clean && npm run build && npm run lint && npm run test",
     "bench": "bencher dist/benchmarks/*-bench.js",
     "clean": "rm -rf dist"
   },
