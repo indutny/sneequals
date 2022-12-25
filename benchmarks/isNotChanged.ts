@@ -5,10 +5,10 @@ const { proxy, watcher } = watch(input);
 watcher.unwrap({ c: proxy.a.b[2] });
 watcher.stop();
 
-export const name = 'isChanged';
+export const name = 'isNotChanged';
 
 export default () => {
-  const changed = watcher.isChanged(input, { a: { b: [30, 40, 50] } });
+  const notChanged = !watcher.isChanged(input, { a: { b: [30, 40, 30] } });
 
-  return changed ? 1 : 0;
+  return notChanged ? 1 : 0;
 };
