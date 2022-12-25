@@ -1,4 +1,4 @@
-import { hasSameOwnKeys, throwReadOnly, isObject } from './util';
+import { hasSameOwnKeys, throwReadOnly, isObject, maybeUnfreeze } from './util';
 
 type AbstractRecord = Record<string | symbol, unknown>;
 
@@ -190,7 +190,12 @@ export class Watcher {
       return entry as Value;
     }
 
-    const { proxy, revoke } = Proxy.revocable(value, {
+    // We need to be able to return tracked value on "get" access to the object,
+    // but for the frozen object all properties are readonly and
+    // non-configurable so Proxy must return the original value.
+    const unfrozen = maybeUnfreeze(value, kSource);
+
+    const { proxy, revoke } = Proxy.revocable(unfrozen, {
       defineProperty: throwReadOnly,
       deleteProperty: throwReadOnly,
       preventExtensions: throwReadOnly,

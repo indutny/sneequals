@@ -114,15 +114,17 @@ On M1 Macbook Pro 13:
 > @indutny/sneequals@1.3.5 bench
 > bencher dist/benchmarks/*.js
 
-isChanged:    12’537’951.7 ops/sec (±110’841.8, p=0.001, o=0/100)
-isNotChanged: 11’334’430.0 ops/sec (±89’485.8, p=0.001, o=2/100)
-memoize:      4’563’277.3 ops/sec (±42’522.8, p=0.001, o=2/100)
-watch+unwrap: 875’448.8 ops/sec (±13’767.5, p=0.001, o=7/100)
+isChanged:    5’138’457.0 ops/sec (±129’240.4, p=0.001, o=7/100)
+isNotChanged: 9’847’163.0 ops/sec (±81’090.6, p=0.001, o=3/100)
+memoize:      9’021’557.5 ops/sec (±109’671.1, p=0.001, o=6/100)
+watch+unwrap: 837’999.5 ops/sec (±13’528.4, p=0.001, o=1/100)
 ```
 
 ## Credits
 
-Name coined by [Scott Nonnenberg](https://github.com/scottnonnenberg/).
+- Based on [proxy-compare](https://github.com/dai-shi/proxy-compare) by
+  [dai-shi](https://github.com/dai-shi)
+- Name coined by [Scott Nonnenberg](https://github.com/scottnonnenberg/).
 
 ## LICENSE
 

@@ -321,6 +321,38 @@ test('own property descriptor access', (t) => {
   t.true(watcher.isChanged(input, { a: 1, b: 2 }), 'old property not in proto');
 });
 
+test('frozen objects', (t) => {
+  const input = Object.freeze({
+    a: Object.freeze([1]),
+  });
+
+  for (const prefix of ['fresh', 'cached']) {
+    const { proxy, watcher } = watch(input);
+
+    const derived = watcher.unwrap({
+      b: proxy.a[0],
+    });
+    watcher.stop();
+
+    t.is(derived.b, input.a[0]);
+    t.deepEqual(watcher.getAffectedPaths(input), ['$.a.0']);
+
+    t.false(
+      watcher.isChanged(input, input),
+      `${prefix}: self comparison returns true`,
+    );
+    t.false(
+      watcher.isChanged(input, { a: [1, 2] }),
+      `${prefix}: same deep property`,
+    );
+
+    t.true(
+      watcher.isChanged(input, { a: [2] }),
+      `${prefix}: different deep property`,
+    );
+  }
+});
+
 test('wrapAll', (t) => {
   const a = { x: 1 };
   const b = { x: 1 };
