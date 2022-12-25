@@ -20,7 +20,7 @@
     "lint": "npm run check:eslint && npm run check:format",
     "check:eslint": "eslint --cache .",
     "check:format": "prettier --cache --check .",
-    "prepare": "npm run clean && npm run build && npm run lint && npm run test",
+    "prepublishOnly": "npm run clean && npm run build && npm run lint && npm run test",
     "bench": "bencher dist/benchmarks/*-bench.js",
     "clean": "rm -rf dist"
   },
