@@ -40,7 +40,7 @@
     ]
   },
   "devDependencies": {
-    "@indutny/bencher": "^1.1.0",
+    "@indutny/bencher": "^1.1.1",
     "@typescript-eslint/eslint-plugin": "^5.47.0",
     "@typescript-eslint/parser": "^5.47.0",
     "ava": "^5.1.0",
