@@ -1,14 +1,10 @@
 import { hasSameOwnKeys, throwReadOnly, isObject, maybeUnfreeze } from './util';
 
-type AbstractRecord = Record<string | symbol, unknown>;
-
-type TouchedEntry = {
-  readonly keys: Set<string | symbol>;
-  readonly has: Set<string | symbol>;
-  readonly hasOwn: Set<string | symbol>;
-  self: boolean;
-  allOwnKeys: boolean;
-};
+export interface IWatcher {
+  unwrap<Result>(result: Result): Result;
+  stop(): void;
+  isChanged<Value>(oldValue: Value, newValue: Value): boolean;
+}
 
 export type WatchResult<Value> = Readonly<{
   proxy: Value;
@@ -20,7 +16,18 @@ export type WatchAllResult<Values extends ReadonlyArray<unknown>> = Readonly<{
   watcher: IWatcher;
 }>;
 
+type AbstractRecord = Record<string | symbol, unknown>;
+
+type TouchedEntry = {
+  readonly keys: Set<string | symbol>;
+  readonly has: Set<string | symbol>;
+  readonly hasOwn: Set<string | symbol>;
+  self: boolean;
+  allOwnKeys: boolean;
+};
+
 const kSource: unique symbol = Symbol();
+const kTouched: unique symbol = Symbol();
 
 function getSource<Value>(value: Value): Value {
   if (!isObject(value)) {
@@ -31,18 +38,13 @@ function getSource<Value>(value: Value): Value {
   return source ?? value;
 }
 
-export interface IWatcher {
-  unwrap<Result>(result: Result): Result;
-  stop(): void;
-  isChanged<Value>(oldValue: Value, newValue: Value): boolean;
-  getAffectedPaths(value: unknown): Array<string>;
-}
-
 class Watcher implements IWatcher {
   private readonly proxyMap = new WeakMap<object, object>();
-  private readonly touched = new WeakMap<object, TouchedEntry>();
 
   private revokes: Array<() => void> = [];
+
+  // Public for `getAffectedPaths`
+  public readonly [kTouched] = new WeakMap<object, TouchedEntry>();
 
   public unwrap<Result>(result: Result): Result {
     // Primitives and functions
@@ -94,7 +96,7 @@ class Watcher implements IWatcher {
       return false;
     }
 
-    const touched = this.touched.get(oldSource);
+    const touched = this[kTouched].get(oldSource);
 
     // Object wasn't touched - assuming it is the same.
     if (touched === undefined) {
@@ -146,12 +148,6 @@ class Watcher implements IWatcher {
     }
 
     return false;
-  }
-
-  public getAffectedPaths(value: unknown): Array<string> {
-    const out: Array<string> = [];
-    this.getAffectedPathsInto(value, '$', out);
-    return out;
   }
 
   public track<Value>(value: Value): Value {
@@ -217,7 +213,7 @@ class Watcher implements IWatcher {
   //
 
   private touch(source: object): TouchedEntry {
-    let touched = this.touched.get(source);
+    let touched = this[kTouched].get(source);
     if (touched === undefined) {
       touched = {
         keys: new Set(),
@@ -226,51 +222,9 @@ class Watcher implements IWatcher {
         self: false,
         allOwnKeys: false,
       };
-      this.touched.set(source, touched);
+      this[kTouched].set(source, touched);
     }
     return touched;
-  }
-
-  private getAffectedPathsInto(
-    value: unknown,
-    path: string,
-    out: Array<string>,
-  ): void {
-    if (!isObject(value)) {
-      if (path !== '$') {
-        out.push(path);
-      }
-      return;
-    }
-
-    const source = getSource(value);
-    const touched = this.touched.get(source);
-
-    if (touched === undefined) {
-      return;
-    }
-
-    if (touched.self) {
-      out.push(path);
-      return;
-    }
-
-    if (touched.allOwnKeys) {
-      out.push(`${path}[*]`);
-    }
-
-    const record = source as AbstractRecord;
-    for (const key of touched.hasOwn) {
-      out.push(`${path}:hasOwn(${String(key)})`);
-    }
-
-    for (const key of touched.has) {
-      out.push(`${path}:has(${String(key)})`);
-    }
-
-    for (const key of touched.keys) {
-      this.getAffectedPathsInto(record[key], `${path}.${String(key)}`, out);
-    }
   }
 }
 
@@ -341,7 +295,7 @@ export function memoize<Params extends ReadonlyArray<unknown>, Result>(
     watcher.stop();
 
     if (stats?.onAdd) {
-      stats.onAdd(...sources.map((param) => watcher.getAffectedPaths(param)));
+      stats.onAdd(...sources.map((param) => getAffectedPaths(watcher, param)));
     }
 
     const newCached = {
@@ -357,4 +311,60 @@ export function memoize<Params extends ReadonlyArray<unknown>, Result>(
 
     return result;
   };
+}
+
+export function getAffectedPaths(
+  watcher: IWatcher,
+  value: unknown,
+): Array<string> {
+  if (!(watcher instanceof Watcher)) {
+    return [];
+  }
+
+  const out: Array<string> = [];
+  getAffectedPathsInto(watcher, value, '$', out);
+  return out;
+}
+
+function getAffectedPathsInto(
+  watcher: Watcher,
+  value: unknown,
+  path: string,
+  out: Array<string>,
+): void {
+  if (!isObject(value)) {
+    if (path !== '$') {
+      out.push(path);
+    }
+    return;
+  }
+
+  const source = getSource(value);
+  const touched = watcher[kTouched].get(source);
+
+  if (touched === undefined) {
+    return;
+  }
+
+  if (touched.self) {
+    out.push(path);
+    return;
+  }
+
+  if (touched.allOwnKeys) {
+    out.push(`${path}[*]`);
+  }
+
+  const record = source as AbstractRecord;
+  for (const key of touched.hasOwn) {
+    out.push(`${path}:hasOwn(${String(key)})`);
+  }
+
+  for (const key of touched.has) {
+    out.push(`${path}:has(${String(key)})`);
+  }
+
+  for (const key of touched.keys) {
+    getAffectedPathsInto(watcher, record[key], `${path}.${String(key)}`, out);
+  }
 }

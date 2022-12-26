@@ -1,6 +1,6 @@
 import test from 'ava';
 
-import { watch, watchAll } from '../src';
+import { watch, watchAll, getAffectedPaths } from '../src';
 
 test('placing sub-property object into wrapped result', (t) => {
   const input = {
@@ -18,7 +18,7 @@ test('placing sub-property object into wrapped result', (t) => {
   watcher.stop();
 
   t.is(derived.y, input.x.y);
-  t.deepEqual(watcher.getAffectedPaths(input), ['$.x.y']);
+  t.deepEqual(getAffectedPaths(watcher, input), ['$.x.y']);
 
   t.false(watcher.isChanged(input, input), 'input should be equal to itself');
   t.false(
@@ -63,7 +63,7 @@ test('placing and accessing sub-property object into wrapped result', (t) => {
 
   t.is(derived.x, input.x);
   t.is(derived.y, input.x.y);
-  t.deepEqual(watcher.getAffectedPaths(input), ['$.x']);
+  t.deepEqual(getAffectedPaths(watcher, input), ['$.x']);
 
   t.false(watcher.isChanged(input, input), 'input should be equal to itself');
   t.false(
@@ -99,7 +99,7 @@ test('nested wraps', (t) => {
   w2.stop();
 
   t.is(derived.y, 1);
-  t.deepEqual(w1.getAffectedPaths(input), ['$.x:hasOwn(y)', '$.x.y']);
+  t.deepEqual(getAffectedPaths(w1, input), ['$.x:hasOwn(y)', '$.x.y']);
 
   t.false(w2.isChanged(p1.x, p1.x), 'outer: proxy should be equal to itself');
   t.false(
@@ -160,7 +160,7 @@ test('comparing arrays', (t) => {
   watcher.stop();
 
   t.is(derived.x, 2);
-  t.deepEqual(watcher.getAffectedPaths(input), ['$.1.x']);
+  t.deepEqual(getAffectedPaths(watcher, input), ['$.1.x']);
 
   t.false(watcher.isChanged(input, input), 'same input');
   t.false(
@@ -195,7 +195,7 @@ test('accessing own keys', (t) => {
   watcher.stop();
 
   t.deepEqual(derived.keys, ['a', 'b']);
-  t.deepEqual(watcher.getAffectedPaths(input), ['$[*]']);
+  t.deepEqual(getAffectedPaths(watcher, input), ['$[*]']);
 
   t.false(watcher.isChanged(input, input), 'input should be equal to itself');
   t.false(
@@ -247,8 +247,8 @@ test('accessing own keys', (t) => {
 test('comparing untracked primitives', (t) => {
   const { watcher } = watch({});
   watcher.stop();
-  t.deepEqual(watcher.getAffectedPaths(true), []);
-  t.deepEqual(watcher.getAffectedPaths(null), []);
+  t.deepEqual(getAffectedPaths(watcher, true), []);
+  t.deepEqual(getAffectedPaths(watcher, null), []);
 
   t.false(watcher.isChanged(true, true));
   t.true(watcher.isChanged(true, false));
@@ -261,7 +261,7 @@ test('comparing untracked objects', (t) => {
   watcher.stop();
 
   t.false(watcher.isChanged({}, {}));
-  t.deepEqual(watcher.getAffectedPaths({}), []);
+  t.deepEqual(getAffectedPaths(watcher, {}), []);
 
   const same = {};
   t.false(watcher.isChanged(same, same));
@@ -281,7 +281,7 @@ test('it supports "in"', (t) => {
 
   t.true(derived.hasA);
   t.false(derived.hasB);
-  t.deepEqual(watcher.getAffectedPaths(input), ['$:has(a)', '$:has(b)']);
+  t.deepEqual(getAffectedPaths(watcher, input), ['$:has(a)', '$:has(b)']);
 
   t.false(watcher.isChanged(input, { a: 1 }), 'copied input has the key');
   t.false(watcher.isChanged(input, { a: 2 }), 'different value is ignored');
@@ -311,7 +311,7 @@ test('own property descriptor access', (t) => {
   t.true(derived.hasA);
   t.false(derived.hasB);
   t.is(derived.a, input.a);
-  t.deepEqual(watcher.getAffectedPaths(input), [
+  t.deepEqual(getAffectedPaths(watcher, input), [
     '$:hasOwn(a)',
     '$:hasOwn(b)',
     '$.a',
@@ -346,7 +346,7 @@ test('frozen objects', (t) => {
     watcher.stop();
 
     t.is(derived.b, input.a[0]);
-    t.deepEqual(watcher.getAffectedPaths(input), ['$.a.0']);
+    t.deepEqual(getAffectedPaths(watcher, input), ['$.a.0']);
 
     t.false(
       watcher.isChanged(input, input),
@@ -379,9 +379,9 @@ test('wrapAll', (t) => {
 
   t.is(derived.a, a.x);
   t.is(derived.b, b.x);
-  t.deepEqual(watcher.getAffectedPaths(a), ['$.x']);
-  t.deepEqual(watcher.getAffectedPaths(b), ['$.x']);
-  t.deepEqual(watcher.getAffectedPaths(c), []);
+  t.deepEqual(getAffectedPaths(watcher, a), ['$.x']);
+  t.deepEqual(getAffectedPaths(watcher, b), ['$.x']);
+  t.deepEqual(getAffectedPaths(watcher, c), []);
 
   t.false(watcher.isChanged(a, { x: 1 }), 'copy of first object');
   t.false(watcher.isChanged(b, { x: 1 }), 'copy of second object');
@@ -407,4 +407,18 @@ test('revoked proxies', (t) => {
   watcher.stop();
 
   t.throws(() => proxy.a);
+});
+
+test('getAffectedPaths ignores non-Watcher instances', (t) => {
+  const notWatcher = {
+    unwrap<Result>(result: Result): Result {
+      return result;
+    },
+    // eslint-disable-next-line @typescript-eslint/no-empty-function
+    stop() {},
+    isChanged() {
+      return false;
+    },
+  };
+  t.deepEqual(getAffectedPaths(notWatcher, {}), []);
 });

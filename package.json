@@ -12,6 +12,7 @@
     "README.md"
   ],
   "scripts": {
+    "watch": "npm run build:cjs -- --watch",
     "build": "npm run build:cjs && npm run build:esm",
     "build:cjs": "tsc",
     "build:esm": "tsc --module es2020 --outDir dist/esm",
