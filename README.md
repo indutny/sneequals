@@ -107,19 +107,22 @@ const fn = memoize((a, b) => {
 ### Debug Tools
 
 `memoize()` takes a stats interface as the second argument:
+
 ```js
 import { memoize, getAffectedPaths } from '@indutny/sneequals';
 
-const fn = memoize((a, b) => {
-  return a.a + a.b;
-}, {
-  onHit() {
+const fn = memoize(
+  (a, b) => {
+    return a.a + a.b;
   },
-  onMiss(watcher, [a, b]) {
-    console.log('affected paths in a', getAffectedPaths(watcher, a));
-    console.log('affected paths in b', getAffectedPaths(watcher, b));
+  {
+    onHit() {},
+    onMiss(watcher, [a, b]) {
+      console.log('affected paths in a', getAffectedPaths(watcher, a));
+      console.log('affected paths in b', getAffectedPaths(watcher, b));
+    },
   },
-});
+);
 ```
 
 - `onHit()` is called on every cache hit.
