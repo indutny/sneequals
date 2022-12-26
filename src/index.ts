@@ -27,19 +27,8 @@ function getSource<Value>(value: Value): Value {
     return value;
   }
 
-  let result: object = value;
-
-  // eslint-disable-next-line no-constant-condition
-  while (true) {
-    const source: object | undefined = (result as Record<symbol, object>)[
-      kSource
-    ];
-    if (source === undefined) {
-      break;
-    }
-    result = source;
-  }
-  return result as Value;
+  const source: Value | undefined = (value as Record<symbol, Value>)[kSource];
+  return source ?? value;
 }
 
 export interface IWatcher {
@@ -191,6 +180,8 @@ class Watcher implements IWatcher {
       return entry as Value;
     }
 
+    const source = getSource(value);
+
     // We need to be able to return tracked value on "get" access to the object,
     // but for the frozen object all properties are readonly and
     // non-configurable so Proxy must return the original value.
@@ -205,7 +196,7 @@ class Watcher implements IWatcher {
 
       get: (target, key) => {
         if (key === kSource) {
-          return value;
+          return source;
         }
 
         this.touch(target).keys.add(key);
