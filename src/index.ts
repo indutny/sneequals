@@ -53,7 +53,7 @@ class Watcher implements IWatcher {
   private readonly proxyMap = new WeakMap<object, object>();
   private readonly touched = new WeakMap<object, TouchedEntry>();
 
-  private revokes = new Array<() => void>();
+  private revokes: Array<() => void> = [];
 
   public static watch<Value>(value: Value): WatchResult<Value> {
     const watcher = new Watcher();
@@ -179,7 +179,7 @@ class Watcher implements IWatcher {
   }
 
   public getAffectedPaths(value: unknown): Array<string> {
-    const out = new Array<string>();
+    const out: Array<string> = [];
     this.getAffectedPathsInto(value, '$', out);
     return out;
   }
