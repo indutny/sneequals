@@ -169,6 +169,8 @@ class Watcher implements IWatcher {
     // non-configurable so Proxy must return the original value.
     const unfrozen = maybeUnfreeze(value, kSource);
 
+    let ignoreKey: string | symbol | undefined;
+
     const { proxy, revoke } = Proxy.revocable(unfrozen, {
       defineProperty: throwReadOnly,
       deleteProperty: throwReadOnly,
@@ -183,10 +185,35 @@ class Watcher implements IWatcher {
 
         this.touch(source).keys.add(key);
 
-        const result = Reflect.get(target, key, receiver);
-        return this.track(result);
+        const result = this.track(Reflect.get(target, key, receiver));
+
+        // We generate proxies for objects and they cannot be extended, however
+        // we can have nested proxies in situations where users wrap the object
+        // multiple times.
+        //
+        // In this case parent proxy's [[Get]] implementation will:
+        // 1. Call this "get" trap on the child proxy (through Reflect.get
+        //    above)
+        // 2. Call [[GetOwnProperty] on the child proxy which will call the
+        //    "getOwnPropertyDescriptor" trap in turn.
+        //
+        // We treat "getOwnPropertyDescriptor" calls as checks for own property,
+        // so we ignore these as false positives, and as an extra safety check -
+        // we compare that the key was the same.
+        //
+        // See: https://262.ecma-international.org/6.0/#sec-9.5.8
+        if (receiver !== proxy) {
+          ignoreKey = key;
+        }
+        return result;
       },
       getOwnPropertyDescriptor: (target, key) => {
+        const oldKey = ignoreKey;
+        ignoreKey = undefined;
+        if (oldKey === key) {
+          return;
+        }
+
         if (key !== kSource) {
           this.touch(source).hasOwn.add(key);
         }

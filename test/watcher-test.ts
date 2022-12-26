@@ -99,7 +99,7 @@ test('nested wraps', (t) => {
   w2.stop();
 
   t.is(derived.y, 1);
-  t.deepEqual(getAffectedPaths(w1, input), ['$.x:hasOwn(y)', '$.x.y']);
+  t.deepEqual(getAffectedPaths(w1, input), ['$.x.y']);
 
   t.false(w2.isChanged(p1.x, p1.x), 'outer: proxy should be equal to itself');
   t.false(
