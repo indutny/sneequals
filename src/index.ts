@@ -180,14 +180,14 @@ class Watcher implements IWatcher {
       set: throwReadOnly,
       setPrototypeOf: throwReadOnly,
 
-      get: (target, key) => {
+      get: (target, key, receiver) => {
         if (key === kSource) {
           return source;
         }
 
         this.touch(source).keys.add(key);
 
-        const result = Reflect.get(target, key);
+        const result = Reflect.get(target, key, receiver);
         return this.track(result);
       },
       getOwnPropertyDescriptor: (target, key) => {
