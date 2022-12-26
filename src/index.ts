@@ -12,12 +12,12 @@ type TouchedEntry = {
 
 export type WatchResult<Value> = Readonly<{
   proxy: Value;
-  watcher: Watcher;
+  watcher: IWatcher;
 }>;
 
 export type WatchAllResult<Values extends ReadonlyArray<unknown>> = Readonly<{
   proxies: Values;
-  watcher: Watcher;
+  watcher: IWatcher;
 }>;
 
 const kSource: unique symbol = Symbol('kSource');
@@ -42,15 +42,18 @@ function getSource<Value>(value: Value): Value {
   return result as Value;
 }
 
-export class Watcher {
+export interface IWatcher {
+  unwrap<Result>(result: Result): Result;
+  stop(): void;
+  isChanged<Value>(oldValue: Value, newValue: Value): boolean;
+  getAffectedPaths(value: unknown): Array<string>;
+}
+
+class Watcher implements IWatcher {
   private readonly proxyMap = new WeakMap<object, object>();
   private readonly touched = new WeakMap<object, TouchedEntry>();
 
   private revokes = new Array<() => void>();
-
-  protected constructor() {
-    // disallow constructing directly.
-  }
 
   public static watch<Value>(value: Value): WatchResult<Value> {
     const watcher = new Watcher();
@@ -329,7 +332,7 @@ export function memoize<Params extends ReadonlyArray<unknown>, Result>(
 ): (...params: Params) => Result {
   type CacheEntry = Readonly<{
     sources: Params;
-    watcher: Watcher;
+    watcher: IWatcher;
     result: Result;
   }>;
 
