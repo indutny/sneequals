@@ -55,14 +55,6 @@ class Watcher implements IWatcher {
 
   private revokes: Array<() => void> = [];
 
-  public static watch<Value>(value: Value): WatchResult<Value> {
-    const watcher = new Watcher();
-    return {
-      proxy: watcher.track(value),
-      watcher,
-    };
-  }
-
   public static watchAll<Values extends ReadonlyArray<unknown>>(
     values: Values,
   ): WatchAllResult<Values> {
@@ -308,7 +300,11 @@ class Watcher implements IWatcher {
 }
 
 export function watch<Value>(value: Value): WatchResult<Value> {
-  return Watcher.watch(value);
+  const {
+    proxies: [proxy],
+    watcher,
+  } = Watcher.watchAll([value]);
+  return { proxy, watcher };
 }
 
 export function watchAll<Values extends ReadonlyArray<unknown>>(
