@@ -20,7 +20,7 @@ export type WatchAllResult<Values extends ReadonlyArray<unknown>> = Readonly<{
   watcher: IWatcher;
 }>;
 
-const kSource: unique symbol = Symbol('kSource');
+const kSource: unique symbol = Symbol();
 
 function getSource<Value>(value: Value): Value {
   if (!isObject(value)) {
