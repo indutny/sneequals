@@ -159,7 +159,7 @@ class Watcher implements IWatcher {
       // It is called after each [[Get]] so if it is not presence check -
       // the key should be also in `touched.keys`.
       //
-      // See: https://262.ecma-international.org/6.0/#sec-proxy-object-internal-methods-and-internal-slots
+      // See: https://262.ecma-international.org/6.0/#sec-proxy-object-internal-methods-and-internal-slots-get-p-receiver
     }
 
     for (const key of touched.has) {
