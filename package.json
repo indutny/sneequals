@@ -1,6 +1,6 @@
 {
   "name": "@indutny/sneequals",
-  "version": "1.4.1",
+  "version": "1.4.2",
   "description": "Sneaky equality check between objects using proxies",
   "main": "dist/src/index.js",
   "module": "dist/esm/src/index.js",
