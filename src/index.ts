@@ -4,7 +4,8 @@ type AbstractRecord = Record<string | symbol, unknown>;
 
 type TouchedEntry = {
   readonly keys: Set<string | symbol>;
-  readonly ownKeys: Set<string | symbol>;
+  readonly has: Set<string | symbol>;
+  readonly hasOwn: Set<string | symbol>;
   self: boolean;
   allOwnKeys: boolean;
 };
@@ -139,7 +140,7 @@ export class Watcher {
     const oldRecord = oldSource as AbstractRecord;
     const newRecord = newValue as AbstractRecord;
 
-    for (const key of touched.ownKeys) {
+    for (const key of touched.hasOwn) {
       const hasOld =
         Reflect.getOwnPropertyDescriptor(oldRecord, key) !== undefined;
       const hasNew =
@@ -157,6 +158,12 @@ export class Watcher {
       // the key should be also in `touched.keys`.
       //
       // See: https://262.ecma-international.org/6.0/#sec-proxy-object-internal-methods-and-internal-slots
+    }
+
+    for (const key of touched.has) {
+      if (Reflect.has(oldRecord, key) !== Reflect.has(newRecord, key)) {
+        return true;
+      }
     }
 
     for (const key of touched.keys) {
@@ -214,13 +221,13 @@ export class Watcher {
       },
       getOwnPropertyDescriptor: (target, key) => {
         if (key !== kSource) {
-          this.touch(target).ownKeys.add(key);
+          this.touch(target).hasOwn.add(key);
         }
 
         return Reflect.getOwnPropertyDescriptor(target, key);
       },
       has: (target, key) => {
-        this.touch(target).keys.add(key);
+        this.touch(target).has.add(key);
         return Reflect.has(target, key);
       },
       ownKeys: (target) => {
@@ -245,7 +252,8 @@ export class Watcher {
     if (touched === undefined) {
       touched = {
         keys: new Set(),
-        ownKeys: new Set(),
+        hasOwn: new Set(),
+        has: new Set(),
         self: false,
         allOwnKeys: false,
       };
@@ -283,16 +291,12 @@ export class Watcher {
     }
 
     const record = source as AbstractRecord;
-    for (const key of touched.ownKeys) {
-      const hasOwn = Object.hasOwn(record, key);
-      const subPath = `${path}>${String(key)}`;
+    for (const key of touched.hasOwn) {
+      out.push(`${path}:hasOwn(${String(key)})`);
+    }
 
-      if (!hasOwn) {
-        out.push(subPath);
-        continue;
-      }
-
-      this.getAffectedPathsInto(record[key], subPath, out);
+    for (const key of touched.has) {
+      out.push(`${path}:has(${String(key)})`);
     }
 
     for (const key of touched.keys) {

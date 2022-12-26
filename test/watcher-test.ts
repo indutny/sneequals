@@ -99,7 +99,7 @@ test('nested wraps', (t) => {
   w2.stop();
 
   t.is(derived.y, 1);
-  t.deepEqual(w1.getAffectedPaths(input), ['$.x>y', '$.x.y']);
+  t.deepEqual(w1.getAffectedPaths(input), ['$.x:hasOwn(y)', '$.x.y']);
 
   t.false(w2.isChanged(p1.x, p1.x), 'outer: proxy should be equal to itself');
   t.false(
@@ -268,25 +268,32 @@ test('comparing untracked objects', (t) => {
 });
 
 test('it supports "in"', (t) => {
-  const input: Partial<{ a: number; b: number }> = { a: 1 };
+  const input: Partial<{ a: number; b: number; c: number }> = { a: 1 };
 
   const { proxy, watcher } = watch(input);
 
   const derived = watcher.unwrap({
-    hasA: 'a' in proxy ? true : undefined,
+    hasA: 'a' in proxy,
+    hasB: 'b' in proxy,
   });
 
   watcher.stop();
 
   t.true(derived.hasA);
-  t.deepEqual(watcher.getAffectedPaths(input), ['$.a']);
+  t.false(derived.hasB);
+  t.deepEqual(watcher.getAffectedPaths(input), ['$:has(a)', '$:has(b)']);
 
-  t.false(watcher.isChanged(input, { a: 1 }), 'copied input is the same');
+  t.false(watcher.isChanged(input, { a: 1 }), 'copied input has the key');
+  t.false(watcher.isChanged(input, { a: 2 }), 'different value is ignored');
   t.false(
-    watcher.isChanged(input, { a: 1, b: 2 }),
+    watcher.isChanged(input, { a: 1, c: 3 }),
     'new properties are ignored',
   );
-  t.true(watcher.isChanged(input, { a: 2 }), 'changed property is not ignored');
+  t.true(watcher.isChanged(input, {}), 'missing property is not ignored');
+  t.true(
+    watcher.isChanged(input, { a: 1, b: 1 }),
+    'added property is not ignored',
+  );
 });
 
 test('own property descriptor access', (t) => {
@@ -304,7 +311,11 @@ test('own property descriptor access', (t) => {
   t.true(derived.hasA);
   t.false(derived.hasB);
   t.is(derived.a, input.a);
-  t.deepEqual(watcher.getAffectedPaths(input), ['$>a', '$>b', '$.a']);
+  t.deepEqual(watcher.getAffectedPaths(input), [
+    '$:hasOwn(a)',
+    '$:hasOwn(b)',
+    '$.a',
+  ]);
 
   t.false(watcher.isChanged(input, input), 'self comparison returns true');
   t.false(watcher.isChanged(input, { a: 1 }), 'same own property');
