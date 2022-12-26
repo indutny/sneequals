@@ -115,24 +115,21 @@ class Watcher implements IWatcher {
     const oldRecord = oldSource as AbstractRecord;
     const newRecord = newValue as AbstractRecord;
 
-    for (const key of touched.hasOwn) {
-      const hasOld =
-        Reflect.getOwnPropertyDescriptor(oldRecord, key) !== undefined;
-      const hasNew =
-        Reflect.getOwnPropertyDescriptor(newRecord, key) !== undefined;
+    if (!touched.allOwnKeys) {
+      for (const key of touched.hasOwn) {
+        const hasOld =
+          Reflect.getOwnPropertyDescriptor(oldRecord, key) !== undefined;
+        const hasNew =
+          Reflect.getOwnPropertyDescriptor(newRecord, key) !== undefined;
 
-      if (hasOld !== hasNew) {
-        return true;
+        if (hasOld !== hasNew) {
+          return true;
+        }
+
+        // For simplicity we assume that `getOwnPropertyDescriptor` is used only
+        // as a check for property presence and not for the actual
+        // value/configurable/enumerable present in the descriptor.
       }
-
-      // For simplicity we assume that `getOwnPropertyDescriptor` is used only
-      // as a check for property presence and not for the actual
-      // value/configurable/enumerable present in the descriptor.
-      //
-      // It is called after each [[Get]] so if it is not presence check -
-      // the key should be also in `touched.keys`.
-      //
-      // See: https://262.ecma-international.org/6.0/#sec-9.5.8
     }
 
     for (const key of touched.has) {
@@ -372,18 +369,20 @@ function getAffectedPathsInto(
   }
 
   if (touched.allOwnKeys) {
-    out.push(`${path}[*]`);
+    out.push(`${path}:allOwnKeys`);
   }
 
-  const record = source as AbstractRecord;
-  for (const key of touched.hasOwn) {
-    out.push(`${path}:hasOwn(${String(key)})`);
+  if (!touched.allOwnKeys) {
+    for (const key of touched.hasOwn) {
+      out.push(`${path}:hasOwn(${String(key)})`);
+    }
   }
 
   for (const key of touched.has) {
     out.push(`${path}:has(${String(key)})`);
   }
 
+  const record = source as AbstractRecord;
   for (const key of touched.keys) {
     getAffectedPathsInto(watcher, record[key], `${path}.${String(key)}`, out);
   }

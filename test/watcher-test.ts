@@ -217,12 +217,20 @@ test('accessing own keys', (t) => {
 
   const { proxy, watcher } = watch(input);
   const derived = watcher.unwrap({
+    // This should not contribute to affected paths
+    hasA: Object.hasOwn(proxy, 'a'),
+
     keys: Reflect.ownKeys(proxy).sort(),
+
+    // This should not contribute to affected paths
+    hasB: Object.hasOwn(proxy, 'a'),
   });
   watcher.stop();
 
+  t.true(derived.hasA);
   t.deepEqual(derived.keys, ['a', 'b']);
-  t.deepEqual(getAffectedPaths(watcher, input), ['$[*]']);
+  t.true(derived.hasB);
+  t.deepEqual(getAffectedPaths(watcher, input), ['$:allOwnKeys']);
 
   t.false(watcher.isChanged(input, input), 'input should be equal to itself');
   t.false(
