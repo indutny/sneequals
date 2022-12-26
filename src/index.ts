@@ -94,7 +94,6 @@ class Watcher implements IWatcher {
         // It is safe to update the result since it is a generated object.
         (result as AbstractRecord)[key] = unwrappedValue;
 
-        this.touched.get(result);
         this.touch(result).keys.add(key);
         this.touch(unwrappedValue as object).self = true;
       }
