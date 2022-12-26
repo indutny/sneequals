@@ -269,17 +269,16 @@ export function watchAll<Values extends ReadonlyArray<unknown>>(
   };
 }
 
-export interface MemoizeStats {
+export interface MemoizeStats<Params extends ReadonlyArray<unknown>> {
   onHit?(): void;
-  onMiss?(): void;
-  onAdd?(...paths: Array<ReadonlyArray<string>>): void;
+  onMiss?(watcher: IWatcher, params: Params): void;
 }
 
 export function memoize<Params extends ReadonlyArray<unknown>, Result>(
   fn: (...params: Params) => Result,
 
   // Mostly for tests
-  stats?: MemoizeStats,
+  stats?: MemoizeStats<Params>,
 ): (...params: Params) => Result {
   type CacheEntry = Readonly<{
     sources: Params;
@@ -311,14 +310,12 @@ export function memoize<Params extends ReadonlyArray<unknown>, Result>(
       }
     }
 
-    stats?.onMiss?.();
-
     const { proxies, watcher } = watchAll(params);
     const result = watcher.unwrap(fn(...proxies));
     watcher.stop();
 
-    if (stats?.onAdd) {
-      stats.onAdd(...sources.map((param) => getAffectedPaths(watcher, param)));
+    if (stats?.onMiss) {
+      stats.onMiss(watcher, params);
     }
 
     const newCached = {

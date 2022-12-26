@@ -1,10 +1,17 @@
 import test from 'ava';
 
-import { memoize, type MemoizeStats } from '../src';
+import {
+  memoize,
+  getAffectedPaths,
+  type MemoizeStats,
+  type IWatcher,
+} from '../src';
 
 type StatsResult = 'hit' | 'miss' | undefined;
 
-class Stats implements MemoizeStats {
+class Stats<Params extends ReadonlyArray<unknown>>
+  implements MemoizeStats<Params>
+{
   private privResult: StatsResult;
   private paramPaths: Array<ReadonlyArray<string>> | undefined;
 
@@ -15,15 +22,12 @@ class Stats implements MemoizeStats {
     this.privResult = 'hit';
   }
 
-  public onMiss(): void {
+  public onMiss(watcher: IWatcher, params: Params): void {
     if (this.privResult !== undefined) {
       throw new Error('Stats not clean');
     }
     this.privResult = 'miss';
-  }
-
-  public onAdd(...paramPaths: Array<ReadonlyArray<string>>): void {
-    this.paramPaths = paramPaths;
+    this.paramPaths = params.map((param) => getAffectedPaths(watcher, param));
   }
 
   public get result(): StatsResult {
