@@ -210,11 +210,7 @@ class Watcher implements IWatcher {
       getOwnPropertyDescriptor: (target, key) => {
         const oldKey = ignoreKey;
         ignoreKey = undefined;
-        if (oldKey === key) {
-          return;
-        }
-
-        if (key !== kSource) {
+        if (oldKey !== key && key !== kSource) {
           this.touch(source).hasOwn.add(key);
         }
 

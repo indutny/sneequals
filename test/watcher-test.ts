@@ -151,6 +151,33 @@ test('nested wraps', (t) => {
   );
 });
 
+test('nested wraps with non-configurable properties', (t) => {
+  const input = [1, 2, 3];
+  const { proxy: p1, watcher: w1 } = watch(input);
+  const { proxy: p2, watcher: w2 } = watch(p1);
+
+  const derived = w1.unwrap(w2.unwrap(p2.filter((x) => x > 1)));
+
+  w2.stop();
+  w1.stop();
+
+  t.deepEqual(derived, [2, 3]);
+
+  const affected = [
+    '$:has(0)',
+    '$:has(1)',
+    '$:has(2)',
+    '$.filter',
+    '$.length',
+    '$.constructor',
+    '$.0',
+    '$.1',
+    '$.2',
+  ];
+  t.deepEqual(getAffectedPaths(w1, input), affected);
+  t.deepEqual(getAffectedPaths(w2, input), affected);
+});
+
 test('comparing arrays', (t) => {
   const input: Array<{ x: number; y?: number }> = [{ x: 1 }, { x: 2 }];
   const { proxy, watcher } = watch(input);
