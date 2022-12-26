@@ -16,7 +16,7 @@
     "build": "npm run build:cjs && npm run build:esm",
     "build:cjs": "tsc",
     "build:esm": "tsc --module es2020 --outDir dist/esm",
-    "test": "c8 ava test/*.ts",
+    "test": "c8 --100 ava test/*.ts",
     "format": "prettier --cache --write .",
     "lint": "npm run check:eslint && npm run check:format",
     "check:eslint": "eslint --cache .",
