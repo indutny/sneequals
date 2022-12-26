@@ -44,16 +44,6 @@ class Watcher implements IWatcher {
 
   private revokes: Array<() => void> = [];
 
-  public static watchAll<Values extends ReadonlyArray<unknown>>(
-    values: Values,
-  ): WatchAllResult<Values> {
-    const watcher = new Watcher();
-    return {
-      proxies: values.map((value) => watcher.track(value)) as unknown as Values,
-      watcher,
-    };
-  }
-
   public unwrap<Result>(result: Result): Result {
     // Primitives and functions
     if (!isObject(result)) {
@@ -164,11 +154,7 @@ class Watcher implements IWatcher {
     return out;
   }
 
-  //
-  // Protected
-  //
-
-  protected track<Value>(value: Value): Value {
+  public track<Value>(value: Value): Value {
     // Primitives or functions
     if (!isObject(value)) {
       return value;
@@ -292,14 +278,18 @@ export function watch<Value>(value: Value): WatchResult<Value> {
   const {
     proxies: [proxy],
     watcher,
-  } = Watcher.watchAll([value]);
+  } = watchAll([value]);
   return { proxy, watcher };
 }
 
 export function watchAll<Values extends ReadonlyArray<unknown>>(
   values: Values,
 ): WatchAllResult<Values> {
-  return Watcher.watchAll(values);
+  const watcher = new Watcher();
+  return {
+    proxies: values.map((value) => watcher.track(value)) as unknown as Values,
+    watcher,
+  };
 }
 
 export interface MemoizeStats {
