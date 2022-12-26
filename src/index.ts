@@ -75,8 +75,8 @@ class Watcher implements IWatcher {
         // It is safe to update the result since it is a generated object.
         (result as AbstractRecord)[key] = unwrappedValue;
 
-        this.touch(result).keys.add(key);
-        this.touch(unwrappedValue as object).self = true;
+        this.touch(source).keys.add(key);
+        this.touch(getSource(unwrappedValue) as object).self = true;
       }
     }
 
@@ -199,24 +199,24 @@ class Watcher implements IWatcher {
           return source;
         }
 
-        this.touch(target).keys.add(key);
+        this.touch(source).keys.add(key);
 
         const result = Reflect.get(target, key);
         return this.track(result);
       },
       getOwnPropertyDescriptor: (target, key) => {
         if (key !== kSource) {
-          this.touch(target).hasOwn.add(key);
+          this.touch(source).hasOwn.add(key);
         }
 
         return Reflect.getOwnPropertyDescriptor(target, key);
       },
       has: (target, key) => {
-        this.touch(target).has.add(key);
+        this.touch(source).has.add(key);
         return Reflect.has(target, key);
       },
       ownKeys: (target) => {
-        this.touch(target).allOwnKeys = true;
+        this.touch(source).allOwnKeys = true;
         return Reflect.ownKeys(target);
       },
     });
@@ -230,9 +230,7 @@ class Watcher implements IWatcher {
   // Private
   //
 
-  private touch(target: object): TouchedEntry {
-    const source = getSource(target);
-
+  private touch(source: object): TouchedEntry {
     let touched = this.touched.get(source);
     if (touched === undefined) {
       touched = {
