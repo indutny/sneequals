@@ -355,7 +355,7 @@ class Watcher implements IWatcher {
  *          comparison.
  *
  * @example
- * Here's the example with different objects, but unchanged accessed properties:
+ * Here's an example with different objects, but unchanged accessed properties:
  * ```
  * import { watch } from '@indutny/sneequals';
  *
@@ -399,7 +399,7 @@ export function watch<Value>(value: Value): WatchResult<Value> {
  *          comparison.
  *
  * @example
- * Here's the example with different objects, but unchanged accessed properties:
+ * Here's an example with different objects, but unchanged accessed properties:
  * ```
  * import { watchAll } from '@indutny/sneequals';
  *
@@ -464,8 +464,7 @@ export interface IMemoizeOptions<Params extends ReadonlyArray<unknown>> {
  * the same tracked values as the last time.
  *
  * Note that this means that the memoized function keeps at most one cached
- * result, similar to redux's `reselect`:
- * {@link https://github.com/reduxjs/reselect}.
+ * result, similar to redux's {@link https://github.com/reduxjs/reselect | reselect}.
  *
  * @see {@link IMemoizeOptions} for details on available options.
  *
@@ -494,7 +493,7 @@ export interface IMemoizeOptions<Params extends ReadonlyArray<unknown>> {
  *
  * @example
  * With react-redux and an id lookup.
- * ({@link https://github.com/dai-shi/proxy-memoize#usage-with-react-redux--reselect | Taken from proxy-memoize }.)
+ * ({@link https://github.com/dai-shi/proxy-memoize#usage-with-react-redux--reselect | Taken from proxy-memoize}.)
  * ```
  * import { useCallback } from 'react';
  * import { useSelector } from 'react-redux';
