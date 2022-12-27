@@ -1,4 +1,4 @@
-import { hasSameOwnKeys, throwReadOnly, isObject, maybeUnfreeze } from './util';
+import { hasSameOwnKeys, returnFalse, isObject, maybeUnfreeze } from './util';
 
 export interface IWatcher {
   unwrap<Result>(result: Result): Result;
@@ -169,11 +169,11 @@ class Watcher implements IWatcher {
     let ignoreKey: string | symbol | undefined;
 
     const { proxy, revoke } = Proxy.revocable(unfrozen, {
-      defineProperty: throwReadOnly,
-      deleteProperty: throwReadOnly,
-      preventExtensions: throwReadOnly,
-      set: throwReadOnly,
-      setPrototypeOf: throwReadOnly,
+      defineProperty: returnFalse,
+      deleteProperty: returnFalse,
+      preventExtensions: returnFalse,
+      set: returnFalse,
+      setPrototypeOf: returnFalse,
 
       get: (target, key, receiver) => {
         if (key === kSource) {
