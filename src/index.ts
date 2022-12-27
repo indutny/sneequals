@@ -40,9 +40,9 @@ function getSource<Value>(value: Value): Value {
 }
 
 class Watcher implements IWatcher {
-  private readonly proxyMap = new WeakMap<object, object>();
+  readonly #proxyMap = new WeakMap<object, object>();
 
-  private revokes: Array<() => void> = [];
+  #revokes: Array<() => void> = [];
 
   /** @internal */
   public readonly [kTouched] = new WeakMap<
@@ -71,7 +71,7 @@ class Watcher implements IWatcher {
         // It is safe to update the result since it is a generated object.
         (result as AbstractRecord)[key] = unwrappedValue;
 
-        this.touch(source)?.keys.add(key);
+        this.#touch(source)?.keys.add(key);
         this[kTouched].set(getSource(unwrappedValue) as object, kSelf);
       }
     }
@@ -80,8 +80,8 @@ class Watcher implements IWatcher {
   }
 
   public stop(): void {
-    const revokes = this.revokes;
-    this.revokes = [];
+    const revokes = this.#revokes;
+    this.#revokes = [];
     for (const revoke of revokes) {
       revoke();
     }
@@ -159,7 +159,7 @@ class Watcher implements IWatcher {
     }
 
     // Return cached proxy
-    const entry = this.proxyMap.get(value);
+    const entry = this.#proxyMap.get(value);
     if (entry !== undefined) {
       return entry as Value;
     }
@@ -185,7 +185,7 @@ class Watcher implements IWatcher {
           return source;
         }
 
-        this.touch(source)?.keys.add(key);
+        this.#touch(source)?.keys.add(key);
 
         const result = this[kTrack](Reflect.get(target, key, receiver));
 
@@ -213,7 +213,7 @@ class Watcher implements IWatcher {
         const oldKey = ignoreKey;
         ignoreKey = undefined;
         if (oldKey !== key && key !== kSource) {
-          const hasOwn = this.touch(source)?.hasOwn;
+          const hasOwn = this.#touch(source)?.hasOwn;
           if (hasOwn !== kAllOwnKeys) {
             hasOwn?.add(key);
           }
@@ -222,11 +222,11 @@ class Watcher implements IWatcher {
         return Reflect.getOwnPropertyDescriptor(target, key);
       },
       has: (target, key) => {
-        this.touch(source)?.has.add(key);
+        this.#touch(source)?.has.add(key);
         return Reflect.has(target, key);
       },
       ownKeys: (target) => {
-        const entry = this.touch(source);
+        const entry = this.#touch(source);
         if (entry) {
           entry.hasOwn = kAllOwnKeys;
         }
@@ -234,16 +234,12 @@ class Watcher implements IWatcher {
       },
     });
 
-    this.proxyMap.set(value, proxy);
-    this.revokes.push(revoke);
+    this.#proxyMap.set(value, proxy);
+    this.#revokes.push(revoke);
     return proxy as Value;
   }
 
-  //
-  // Private
-  //
-
-  private touch(source: object): TouchedEntry | undefined {
+  #touch(source: object): TouchedEntry | undefined {
     let touched = this[kTouched].get(source);
     if (touched === kSelf) {
       return undefined;
