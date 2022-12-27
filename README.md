@@ -9,7 +9,7 @@
 Sneaky equals comparison between objects that checks only the properties that
 were touched.
 
-Inspired by [proxy-compare](https://github.com/dai-shi/proxy-compare).
+Heavily inspired by [proxy-compare](https://github.com/dai-shi/proxy-compare).
 
 ## Installation
 
