@@ -21,13 +21,13 @@ type AbstractRecord = Record<string | symbol, unknown>;
 type TouchedEntry = {
   readonly keys: Set<string | symbol>;
   readonly has: Set<string | symbol>;
-  readonly hasOwn: Set<string | symbol>;
-  self: boolean;
-  allOwnKeys: boolean;
+  hasOwn: Set<string | symbol> | typeof kAllOwnKeys;
 };
 
 const kSource: unique symbol = Symbol();
 const kTouched: unique symbol = Symbol();
+const kSelf: unique symbol = Symbol();
+const kAllOwnKeys: unique symbol = Symbol();
 
 function getSource<Value>(value: Value): Value {
   if (!isObject(value)) {
@@ -44,7 +44,10 @@ class Watcher implements IWatcher {
   private revokes: Array<() => void> = [];
 
   // Public for `getAffectedPaths`
-  public readonly [kTouched] = new WeakMap<object, TouchedEntry>();
+  public readonly [kTouched] = new WeakMap<
+    object,
+    TouchedEntry | typeof kSelf
+  >();
 
   public unwrap<Result>(result: Result): Result {
     // Primitives and functions
@@ -67,8 +70,8 @@ class Watcher implements IWatcher {
         // It is safe to update the result since it is a generated object.
         (result as AbstractRecord)[key] = unwrappedValue;
 
-        this.touch(source).keys.add(key);
-        this.touch(getSource(unwrappedValue) as object).self = true;
+        this.touch(source)?.keys.add(key);
+        this[kTouched].set(getSource(unwrappedValue) as object, kSelf);
       }
     }
 
@@ -104,18 +107,18 @@ class Watcher implements IWatcher {
     }
 
     // We checked that the objects are different above.
-    if (touched.self) {
-      return true;
-    }
-
-    if (touched.allOwnKeys && !hasSameOwnKeys(oldSource, newValue)) {
+    if (touched === kSelf) {
       return true;
     }
 
     const oldRecord = oldSource as AbstractRecord;
     const newRecord = newValue as AbstractRecord;
 
-    if (!touched.allOwnKeys) {
+    if (touched.hasOwn === kAllOwnKeys) {
+      if (!hasSameOwnKeys(oldSource, newValue)) {
+        return true;
+      }
+    } else {
       for (const key of touched.hasOwn) {
         const hasOld =
           Reflect.getOwnPropertyDescriptor(oldRecord, key) !== undefined;
@@ -180,7 +183,7 @@ class Watcher implements IWatcher {
           return source;
         }
 
-        this.touch(source).keys.add(key);
+        this.touch(source)?.keys.add(key);
 
         const result = this.track(Reflect.get(target, key, receiver));
 
@@ -208,17 +211,23 @@ class Watcher implements IWatcher {
         const oldKey = ignoreKey;
         ignoreKey = undefined;
         if (oldKey !== key && key !== kSource) {
-          this.touch(source).hasOwn.add(key);
+          const hasOwn = this.touch(source)?.hasOwn;
+          if (hasOwn !== kAllOwnKeys) {
+            hasOwn?.add(key);
+          }
         }
 
         return Reflect.getOwnPropertyDescriptor(target, key);
       },
       has: (target, key) => {
-        this.touch(source).has.add(key);
+        this.touch(source)?.has.add(key);
         return Reflect.has(target, key);
       },
       ownKeys: (target) => {
-        this.touch(source).allOwnKeys = true;
+        const entry = this.touch(source);
+        if (entry) {
+          entry.hasOwn = kAllOwnKeys;
+        }
         return Reflect.ownKeys(target);
       },
     });
@@ -232,15 +241,16 @@ class Watcher implements IWatcher {
   // Private
   //
 
-  private touch(source: object): TouchedEntry {
+  private touch(source: object): TouchedEntry | undefined {
     let touched = this[kTouched].get(source);
+    if (touched === kSelf) {
+      return undefined;
+    }
     if (touched === undefined) {
       touched = {
         keys: new Set(),
         hasOwn: new Set(),
         has: new Set(),
-        self: false,
-        allOwnKeys: false,
       };
       this[kTouched].set(source, touched);
     }
@@ -356,16 +366,14 @@ function getAffectedPathsInto(
     return;
   }
 
-  if (touched.self) {
+  if (touched === kSelf) {
     out.push(path);
     return;
   }
 
-  if (touched.allOwnKeys) {
+  if (touched.hasOwn === kAllOwnKeys) {
     out.push(`${path}:allOwnKeys`);
-  }
-
-  if (!touched.allOwnKeys) {
+  } else {
     for (const key of touched.hasOwn) {
       out.push(`${path}:hasOwn(${String(key)})`);
     }

@@ -59,6 +59,11 @@ test('placing and accessing sub-property object into wrapped result', (t) => {
     x: proxy.x,
     y: proxy.x.y,
   });
+
+  // Touch nested property after unwrap to make sure that the `proxy.x` stays
+  // in `kSelf` terminal mode.
+  t.is(proxy.x.y, 1);
+
   watcher.stop();
 
   t.is(derived.x, input.x);
