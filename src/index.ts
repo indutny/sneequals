@@ -245,6 +245,12 @@ class Watcher implements IWatcher {
       return value;
     }
 
+    // Track only arrays and objects (no Maps, WeakMaps, or class instances).
+    const proto = Object.getPrototypeOf(value);
+    if (proto !== Array.prototype && proto !== Object.prototype) {
+      return value;
+    }
+
     // Return cached proxy
     const entry = this.#proxyMap.get(value);
     if (entry !== undefined) {

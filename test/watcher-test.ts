@@ -243,7 +243,7 @@ test('accessing own keys', (t) => {
     'changed values should not trigger invalidation',
   );
 
-  const cInProto = new (class X {
+  const cInProto = new (class {
     a = 1;
     b = 1;
 
@@ -269,7 +269,7 @@ test('accessing own keys', (t) => {
     'different keys should trigger invalidation',
   );
 
-  const bInProto = new (class X {
+  const bInProto = new (class {
     a = 1;
 
     public get b() {
@@ -282,6 +282,25 @@ test('accessing own keys', (t) => {
     watcher.isChanged(input, bInProto),
     'missing own keys present in prototype should trigger invalidation',
   );
+});
+
+test('skip tracking of non-objects/non-arrays', (t) => {
+  const input = {
+    a: new Map([['b', 1]]),
+    c: new (class {
+      d = 2;
+    })(),
+  };
+  const { proxy, watcher } = watch(input);
+  const derived = watcher.unwrap({
+    b: proxy.a.get('b'),
+    d: proxy.c.d,
+  });
+  watcher.stop();
+
+  t.is(derived.b, 1);
+  t.is(derived.d, 2);
+  t.deepEqual(getAffectedPaths(watcher, input), []);
 });
 
 test('comparing untracked primitives', (t) => {
@@ -361,7 +380,7 @@ test('own property descriptor access', (t) => {
   t.false(watcher.isChanged(input, { a: 1 }), 'same own property');
 
   t.true(watcher.isChanged(input, { a: 2 }), 'different own property');
-  const aInProto = new (class X {
+  const aInProto = new (class {
     public get a() {
       return 1;
     }
