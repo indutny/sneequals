@@ -92,9 +92,9 @@ console.log(watcher.isChanged(inputB, { b: 3 })); // true
 
 ### Memoization
 
-`memoize()` is provided as a convenience API method. It has a simple
-WeakMap-based cache that keys by first object argument of the function and/or
-global internal key.
+`memoize()` is provided as a convenience API method. It has a
+[reselect](https://github.com/reduxjs/reselect)-like cache semantics and
+remembers only the last used parameters and returned result.
 
 ```js
 import { memoize } from '@indutny/sneequals';

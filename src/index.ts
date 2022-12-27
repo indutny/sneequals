@@ -283,19 +283,11 @@ export function memoize<Params extends ReadonlyArray<unknown>, Result>(
     result: Result;
   }>;
 
-  const cacheMap = new WeakMap<object, CacheEntry | undefined>();
-  let lastEntry: CacheEntry | undefined;
+  let cached: CacheEntry | undefined;
   return (...params: Params): Result => {
     const sources = params.map((param) =>
       getSource(param),
     ) as unknown as Params;
-    const cacheKey: object | undefined = sources.find(isObject);
-
-    let cached: CacheEntry | undefined;
-    if (cacheKey !== undefined) {
-      cached = cacheMap.get(cacheKey);
-    }
-    cached ??= lastEntry;
 
     if (cached !== undefined && cached.sources.length === sources.length) {
       let isValid = true;
@@ -325,10 +317,7 @@ export function memoize<Params extends ReadonlyArray<unknown>, Result>(
       result,
     };
 
-    if (cacheKey !== undefined) {
-      cacheMap.set(cacheKey, newCached);
-    }
-    lastEntry = newCached;
+    cached = newCached;
 
     return result;
   };
