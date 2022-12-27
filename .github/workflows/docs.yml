@@ -1,0 +1,25 @@
+name: Publish
+on:
+  push:
+    branches:
+      - main
+permissions:
+  contents: write
+jobs:
+  publish-site:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v3
+      - name: Set up Node
+        uses: actions/setup-node@v3
+        with:
+          node-version: latest
+      - name: Install and build
+        run: |
+          npm ci
+          npm run build:docs -- --gitRevision $(git describe --tags --abbrev=0)
+      - name: Deploy
+        uses: JamesIves/github-pages-deploy-action@v4
+        with:
+          folder: docs
