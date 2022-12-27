@@ -18,16 +18,16 @@ export type WatchAllResult<Values extends ReadonlyArray<unknown>> = Readonly<{
 
 type AbstractRecord = Record<string | symbol, unknown>;
 
+const kSource: unique symbol = Symbol();
+const kTouched: unique symbol = Symbol();
+const kSelf: unique symbol = Symbol();
+const kAllOwnKeys = true;
+
 type TouchedEntry = {
   readonly keys: Set<string | symbol>;
   readonly has: Set<string | symbol>;
   hasOwn: Set<string | symbol> | typeof kAllOwnKeys;
 };
-
-const kSource: unique symbol = Symbol();
-const kTouched: unique symbol = Symbol();
-const kSelf: unique symbol = Symbol();
-const kAllOwnKeys: unique symbol = Symbol();
 
 function getSource<Value>(value: Value): Value {
   if (!isObject(value)) {
