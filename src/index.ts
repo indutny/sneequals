@@ -20,6 +20,7 @@ type AbstractRecord = Record<string | symbol, unknown>;
 
 const kSource: unique symbol = Symbol();
 const kTouched: unique symbol = Symbol();
+const kTrack: unique symbol = Symbol();
 const kSelf: unique symbol = Symbol();
 const kAllOwnKeys = true;
 
@@ -43,7 +44,7 @@ class Watcher implements IWatcher {
 
   private revokes: Array<() => void> = [];
 
-  // Public for `getAffectedPaths`
+  /** @internal */
   public readonly [kTouched] = new WeakMap<
     object,
     TouchedEntry | typeof kSelf
@@ -150,7 +151,8 @@ class Watcher implements IWatcher {
     return false;
   }
 
-  public track<Value>(value: Value): Value {
+  /** @internal */
+  public [kTrack]<Value>(value: Value): Value {
     // Primitives or functions
     if (!isObject(value)) {
       return value;
@@ -185,7 +187,7 @@ class Watcher implements IWatcher {
 
         this.touch(source)?.keys.add(key);
 
-        const result = this.track(Reflect.get(target, key, receiver));
+        const result = this[kTrack](Reflect.get(target, key, receiver));
 
         // We generate proxies for objects and they cannot be extended, however
         // we can have nested proxies in situations where users wrap the object
@@ -271,7 +273,7 @@ export function watchAll<Values extends ReadonlyArray<unknown>>(
 ): WatchAllResult<Values> {
   const watcher = new Watcher();
   return {
-    proxies: values.map((value) => watcher.track(value)) as unknown as Values,
+    proxies: values.map((value) => watcher[kTrack](value)) as unknown as Values,
     watcher,
   };
 }
@@ -336,7 +338,7 @@ export function memoize<Params extends ReadonlyArray<unknown>, Result>(
 export function getAffectedPaths(
   watcher: IWatcher,
   value: unknown,
-): Array<string> {
+): ReadonlyArray<string> {
   if (!(watcher instanceof Watcher)) {
     return [];
   }
