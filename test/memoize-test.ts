@@ -3,14 +3,14 @@ import test from 'ava';
 import {
   memoize,
   getAffectedPaths,
-  type MemoizeStats,
+  type IMemoizeOptions,
   type IWatcher,
 } from '../src';
 
 type StatsResult = 'hit' | 'miss' | undefined;
 
 class Stats<Params extends ReadonlyArray<unknown>>
-  implements MemoizeStats<Params>
+  implements IMemoizeOptions<Params>
 {
   private privResult: StatsResult;
   private paramPaths: Array<ReadonlyArray<string>> | undefined;
