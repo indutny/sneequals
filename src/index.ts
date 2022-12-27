@@ -491,6 +491,23 @@ export interface IMemoizeOptions<Params extends ReadonlyArray<unknown>> {
  * // Prints `true`.
  * console.log(answer === cachedAnswer);
  * ```
+ *
+ * @example
+ * With react-redux and an id lookup.
+ * ({@link https://github.com/dai-shi/proxy-memoize#usage-with-react-redux--reselect | Taken from proxy-memoize }.)
+ * ```
+ * import { useCallback } from 'react';
+ * import { useSelector } from 'react-redux';
+ * import { memoize } from '@indutny/sneequals';
+ *
+ * const Component = ({ id }) => {
+ *   const { score, title } = useSelector(useCallback(memoize(state => ({
+ *     score: getScore(state),
+ *     title: state.titles[id],
+ *   })), [id]));
+ *   return <div>{score.score} {score.createdAt} {title}</div>;
+ * };
+ * ```
  */
 export function memoize<Params extends ReadonlyArray<unknown>, Result>(
   fn: (...params: Params) => Result,

@@ -19,8 +19,6 @@ npm install @indutny/sneequals
 
 ## Usage
 
-### One object comparison
-
 ```js
 import { watch } from '@indutny/sneequals';
 
@@ -68,69 +66,6 @@ const sneakyDifferentData = {
 
 console.log(watcher.isChanged(originalData, sneakyDifferentData)); // true
 ```
-
-### Multi object comparison
-
-```js
-import { watchAll } from '@indutny/sneequals';
-
-const inputA = { a: 1 };
-const inputB = { b: 2 };
-
-const { proxies, watcher } = watchAll([inputA, inputB]);
-
-function fn(a, b) {
-  return a.a + a.b;
-}
-
-const result = watcher.unwrap(fn(...proxies));
-
-// Prevent further access to proxies
-watcher.stop();
-
-console.log(watcher.isChanged(inputA, { a: 1 })); // false
-console.log(watcher.isChanged(inputB, { b: 3 })); // true
-```
-
-### Memoization
-
-`memoize()` is provided as a convenience API method. It has a
-[reselect](https://github.com/reduxjs/reselect)-like cache semantics and
-remembers only the last used parameters and returned result.
-
-```js
-import { memoize } from '@indutny/sneequals';
-
-const fn = memoize((a, b) => {
-  return a.a + a.b;
-});
-```
-
-### Debug Tools
-
-`memoize()` takes a stats interface as the second argument:
-
-```js
-import { memoize, getAffectedPaths } from '@indutny/sneequals';
-
-const fn = memoize(
-  (a, b) => {
-    return a.a + a.b;
-  },
-  {
-    onHit() {},
-    onMiss(watcher, [a, b]) {
-      console.log('affected paths in a', getAffectedPaths(watcher, a));
-      console.log('affected paths in b', getAffectedPaths(watcher, b));
-    },
-  },
-);
-```
-
-- `onHit()` is called on every cache hit.
-- `onMiss()` is called on every cache miss, and receives a new `watcher` as the
-  first argument and the list of parameters used when creating this watcher. (It
-  is called after `watcher.unwrap` and `watcher.stop`).
 
 ## Benchmarks
 
