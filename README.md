@@ -4,6 +4,8 @@
 [![size](https://img.shields.io/bundlephobia/minzip/@indutny/sneequals)](https://bundlephobia.com/result?p=@indutny/sneequals)
 ![CI Status](https://github.com/indutny/sneequals/actions/workflows/test.yml/badge.svg)
 
+[API docs](https://indutny.github.io/sneequals).
+
 Sneaky equals comparison between objects that checks only the properties that
 were touched.
 
