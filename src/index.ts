@@ -552,7 +552,7 @@ export function memoize<Params extends ReadonlyArray<unknown>, Result>(
     watcher.stop();
 
     if (options?.onMiss) {
-      options.onMiss(watcher, params, cached?.sources);
+      options.onMiss(watcher, sources, cached?.sources);
     }
 
     const newCached = {
