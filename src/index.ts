@@ -1,4 +1,10 @@
 import { hasSameOwnKeys, returnFalse, isObject, maybeUnfreeze } from './util';
+import {
+  get as reflectGet,
+  getOwnPropertyDescriptor as reflectDescriptor,
+  has as reflectHas,
+  ownKeys as reflectOwnKeys,
+} from './reflect';
 
 /**
  * Result of `watch(value)` call.
@@ -165,7 +171,7 @@ class Watcher implements IWatcher {
     }
 
     // Generated object
-    for (const key of Reflect.ownKeys(result)) {
+    for (const key of reflectOwnKeys(result)) {
       const value = (result as AbstractRecord)[key];
       const unwrappedValue = this.unwrap(value);
       if (unwrappedValue !== value) {
@@ -229,10 +235,9 @@ class Watcher implements IWatcher {
         return true;
       }
     } else {
-      const { getOwnPropertyDescriptor: getDescriptor } = Reflect;
       for (const key of touched.hasOwn) {
-        const hasOld = getDescriptor(oldRecord, key) !== undefined;
-        const hasNew = getDescriptor(newRecord, key) !== undefined;
+        const hasOld = reflectDescriptor(oldRecord, key) !== undefined;
+        const hasNew = reflectDescriptor(newRecord, key) !== undefined;
 
         if (hasOld !== hasNew) {
           return true;
@@ -244,9 +249,8 @@ class Watcher implements IWatcher {
       }
     }
 
-    const { has } = Reflect;
     for (const key of touched.has) {
-      if (has(oldRecord, key) !== has(newRecord, key)) {
+      if (reflectHas(oldRecord, key) !== reflectHas(newRecord, key)) {
         return true;
       }
     }
@@ -302,7 +306,7 @@ class Watcher implements IWatcher {
 
         this.#touch(source)?.keys.add(key);
 
-        const result = this[kTrack](Reflect.get(target, key, receiver));
+        const result = this[kTrack](reflectGet(target, key, receiver));
 
         // We generate proxies for objects and they cannot be extended, however
         // we can have nested proxies in situations where users wrap the object
@@ -334,18 +338,18 @@ class Watcher implements IWatcher {
           }
         }
 
-        return Reflect.getOwnPropertyDescriptor(target, key);
+        return reflectDescriptor(target, key);
       },
       has: (target, key) => {
         this.#touch(source)?.has.add(key);
-        return Reflect.has(target, key);
+        return reflectHas(target, key);
       },
       ownKeys: (target) => {
         const entry = this.#touch(source);
         if (entry) {
           entry.hasOwn = kAllOwnKeys;
         }
-        return Reflect.ownKeys(target);
+        return reflectOwnKeys(target);
       },
     });
 

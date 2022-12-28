@@ -1,5 +1,6 @@
+import { ownKeys } from './reflect';
+
 export function hasSameOwnKeys(a: object, b: object): boolean {
-  const { ownKeys } = Reflect;
   const aKeys = ownKeys(a);
   const bKeys = ownKeys(b);
 
