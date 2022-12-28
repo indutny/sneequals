@@ -456,12 +456,13 @@ export interface IMemoizeOptions<Params extends ReadonlyArray<unknown>> {
    * @param watcher - the newly created `IWatcher` object created with
    *                  `watchAll(params)` API method.
    * @param params - an array of parameters that generated the cache miss.
+   * @param pastParams - an array of parameters from the previous cache miss.
    *
    * @see {@link IWatcher}
    * @see {@link watchAll}
    * @see {@link getAffectedPaths}
    */
-  onMiss?(watcher: IWatcher, params: Params): void;
+  onMiss?(watcher: IWatcher, params: Params, pastParams?: Params): void;
 }
 
 /**
@@ -551,7 +552,7 @@ export function memoize<Params extends ReadonlyArray<unknown>, Result>(
     watcher.stop();
 
     if (options?.onMiss) {
-      options.onMiss(watcher, params);
+      options.onMiss(watcher, params, cached?.sources);
     }
 
     const newCached = {
