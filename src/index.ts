@@ -93,15 +93,37 @@ export interface IWatcher {
 
 type AbstractRecord = Record<string | symbol, unknown>;
 
+// `kSource` is key for Proxy's get() handler to return the original object
+// skipping all proxies that wrap it. We declare it on module level so that
+// multiple instances of `Watcher` all track the source correctly.
 const kSource: unique symbol = Symbol();
-const kTouched: unique symbol = Symbol();
+
+// `kTrack` is the name of the method on `Watcher and it is exported for
+// `watch`/`watchAll` to be able to call into what otherwise would have been a
+// private method of `Watcher` class.
 const kTrack: unique symbol = Symbol();
-const kSelf: unique symbol = Symbol();
+
+// `kTouched` is the name of the property holding the WeakMap of `TouchedEntry`.
+// It is accessed by `getAffectedPaths` outside of `Watcher` class so we have
+// to have it available outside of the `Watcher`.
+const kTouched: unique symbol = Symbol();
+
+// If `kSelf` is present in place of `TouchedEntry` in `kTouched` map - it means
+// that whole object was used and there is no point in checking individual keys
+// anymore since we have to do `===` check on the objects themselves.
+// We set these during `unwrap()` call.
+const kSelf = true;
 const kAllOwnKeys = true;
 
 type TouchedEntry = {
+  // Set of keys for properties that were accessed.
   readonly keys: Set<string | symbol>;
+
+  // Set of keys that were checked with `in` operator.
   readonly has: Set<string | symbol>;
+
+  // Set of keys that were checked with `Object.hasOwn` function or `true` if
+  // `Object.keys()` was called on proxy.
   hasOwn: Set<string | symbol> | typeof kAllOwnKeys;
 };
 
@@ -110,7 +132,7 @@ function getSource<Value>(value: Value): Value {
     return value;
   }
 
-  const source: Value | undefined = (value as Record<symbol, Value>)[kSource];
+  const source = (value as Record<typeof kSource, Value>)[kSource];
   return source ?? value;
 }
 
