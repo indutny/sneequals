@@ -1,6 +1,7 @@
 export function hasSameOwnKeys(a: object, b: object): boolean {
-  const aKeys = Reflect.ownKeys(a);
-  const bKeys = Reflect.ownKeys(b);
+  const { ownKeys } = Reflect;
+  const aKeys = ownKeys(a);
+  const bKeys = ownKeys(b);
 
   if (aKeys.length !== bKeys.length) {
     return false;

@@ -207,11 +207,10 @@ class Watcher implements IWatcher {
         return true;
       }
     } else {
+      const { getOwnPropertyDescriptor: getDescriptor } = Reflect;
       for (const key of touched.hasOwn) {
-        const hasOld =
-          Reflect.getOwnPropertyDescriptor(oldRecord, key) !== undefined;
-        const hasNew =
-          Reflect.getOwnPropertyDescriptor(newRecord, key) !== undefined;
+        const hasOld = getDescriptor(oldRecord, key) !== undefined;
+        const hasNew = getDescriptor(newRecord, key) !== undefined;
 
         if (hasOld !== hasNew) {
           return true;
@@ -223,8 +222,9 @@ class Watcher implements IWatcher {
       }
     }
 
+    const { has } = Reflect;
     for (const key of touched.has) {
-      if (Reflect.has(oldRecord, key) !== Reflect.has(newRecord, key)) {
+      if (has(oldRecord, key) !== has(newRecord, key)) {
         return true;
       }
     }
