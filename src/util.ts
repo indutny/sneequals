@@ -1,6 +1,6 @@
 import { ownKeys } from './reflect';
 
-export function hasSameOwnKeys(a: object, b: object): boolean {
+export const hasSameOwnKeys = (a: object, b: object): boolean => {
   const aKeys = ownKeys(a);
   const bKeys = ownKeys(b);
 
@@ -15,22 +15,19 @@ export function hasSameOwnKeys(a: object, b: object): boolean {
   }
 
   return true;
-}
+};
 
-export function returnFalse(): false {
-  return false;
-}
+export const returnFalse = () => false;
 
-export function isObject(value: unknown): value is object {
-  return value !== null && typeof value === 'object';
-}
+export const isObject = (value: unknown): value is object =>
+  value !== null && typeof value === 'object';
 
 const unfreezeCache = new WeakMap<object, object>();
 
-export function maybeUnfreeze<Value extends object>(
+export const maybeUnfreeze = <Value extends object>(
   value: Value,
   kSource: symbol,
-): Value {
+): Value => {
   if (!Object.isFrozen(value)) {
     return value;
   }
@@ -61,4 +58,4 @@ export function maybeUnfreeze<Value extends object>(
   });
   unfreezeCache.set(value, result);
   return result;
-}
+};

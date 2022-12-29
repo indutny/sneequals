@@ -133,14 +133,14 @@ type TouchedEntry = {
   hasOwn: Set<string | symbol> | typeof kAllOwnKeys;
 };
 
-function getSource<Value>(value: Value): Value {
+const getSource = <Value>(value: Value): Value => {
   if (!isObject(value)) {
     return value;
   }
 
   const source = (value as Record<typeof kSource, Value>)[kSource];
   return source ?? value;
-}
+};
 
 class Watcher implements IWatcher {
   readonly #proxyMap = new WeakMap<object, object>();
@@ -410,13 +410,13 @@ class Watcher implements IWatcher {
  * console.log(watcher.isChanged(value, sameProperties));
  * ```
  */
-export function watch<Value>(value: Value): WatchResult<Value> {
+export const watch = <Value>(value: Value): WatchResult<Value> => {
   const {
     proxies: [proxy],
     watcher,
   } = watchAll([value]);
   return { proxy, watcher };
-}
+};
 
 /**
  * Similar to `watch(value)` this method wraps a list of values with a single
@@ -452,15 +452,15 @@ export function watch<Value>(value: Value): WatchResult<Value> {
  * console.log(watcher.isChanged(values[1], { c: 3 }));
  * ```
  */
-export function watchAll<Values extends ReadonlyArray<unknown>>(
+export const watchAll = <Values extends ReadonlyArray<unknown>>(
   values: Values,
-): WatchAllResult<Values> {
+): WatchAllResult<Values> => {
   const watcher = new Watcher();
   return {
     proxies: values.map((value) => watcher[kTrack](value)) as unknown as Values,
     watcher,
   };
-}
+};
 
 /**
  * Options for `memoize()` method.
@@ -541,12 +541,12 @@ export interface IMemoizeOptions<Params extends ReadonlyArray<unknown>> {
  * };
  * ```
  */
-export function memoize<Params extends ReadonlyArray<unknown>, Result>(
+export const memoize = <Params extends ReadonlyArray<unknown>, Result>(
   fn: (...params: Params) => Result,
 
   // Mostly for tests
   options?: IMemoizeOptions<Params>,
-): (...params: Params) => Result {
+): ((...params: Params) => Result) => {
   type CacheEntry = Readonly<{
     sources: Params;
     watcher: IWatcher;
@@ -591,7 +591,7 @@ export function memoize<Params extends ReadonlyArray<unknown>, Result>(
 
     return result;
   };
-}
+};
 
 /**
  * Returns a list of affected (accessed) JSON paths (and sub-paths) in the
@@ -620,10 +620,10 @@ export function memoize<Params extends ReadonlyArray<unknown>, Result>(
  * console.log(getAffectedPaths(watcher, value));
  * ```
  */
-export function getAffectedPaths(
+export const getAffectedPaths = (
   watcher: IWatcher,
   value: unknown,
-): ReadonlyArray<string> {
+): ReadonlyArray<string> => {
   if (!(watcher instanceof Watcher)) {
     return [];
   }
@@ -631,14 +631,14 @@ export function getAffectedPaths(
   const out: Array<string> = [];
   getAffectedPathsInto(watcher, value, '$', out);
   return out;
-}
+};
 
-function getAffectedPathsInto(
+const getAffectedPathsInto = (
   watcher: Watcher,
   value: unknown,
   path: string,
   out: Array<string>,
-): void {
+): void => {
   if (!isObject(value)) {
     if (path !== '$') {
       out.push(path);
@@ -674,4 +674,4 @@ function getAffectedPathsInto(
   for (const key of touched.keys) {
     getAffectedPathsInto(watcher, record[key], `${path}.${String(key)}`, out);
   }
-}
+};
