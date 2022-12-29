@@ -357,18 +357,19 @@ class Watcher implements IWatcher {
 
     const source = getSource(result);
 
-    // Prevent loops
-    if (visited.has(result)) {
-      return source;
-    }
-    visited.add(result);
-
     // If it was a proxy - just unwrap it
     if (source !== result) {
       // bBut mark the proxy
       this[kTouched].set(source, kSelf);
       return source;
     }
+
+    // If object is circular - we will process its properties in the parent
+    // caller that originally added it to `visited` set.
+    if (visited.has(result)) {
+      return result;
+    }
+    visited.add(result);
 
     // Generated object
     for (const key of reflectOwnKeys(result)) {

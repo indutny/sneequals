@@ -476,22 +476,24 @@ test('unwrapping the proxy itself', (t) => {
 });
 
 test('circular object', (t) => {
-  type Circular = {
-    a: {
-      circular?: Circular;
-    };
+  type Circular<Value> = {
+    self?: Circular<Value>;
+    value: Value;
   };
-  const circular: Circular = { a: {} };
-  circular.a.circular = circular;
 
-  const { watcher } = watch({});
+  const input = { a: { b: 1 } };
+  const { proxy, watcher } = watch(input);
 
-  const derived = watcher.unwrap({
-    circular,
-  });
+  const circular: Circular<typeof proxy.a> = {
+    value: proxy.a,
+  };
+  circular.self = circular;
+
+  const derived = watcher.unwrap(circular);
   watcher.stop();
 
-  t.is(derived.circular, circular);
+  t.is(derived.self, derived);
+  t.is(derived.value, input.a);
 });
 
 test('disallowed updates', (t) => {
