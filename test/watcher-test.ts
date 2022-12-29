@@ -451,6 +451,25 @@ test('wrapAll', (t) => {
   t.true(watcher.isChanged(b, { x: 2 }), 'changed second object');
 });
 
+test('circular object', (t) => {
+  type Circular = {
+    a: {
+      circular?: Circular;
+    };
+  };
+  const circular: Circular = { a: {} };
+  circular.a.circular = circular;
+
+  const { watcher } = watch({});
+
+  const derived = watcher.unwrap({
+    circular,
+  });
+  watcher.stop();
+
+  t.is(derived.circular, circular);
+});
+
 test('disallowed updates', (t) => {
   const input: Partial<{ a: number; b: number }> = { a: 1 };
 

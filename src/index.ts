@@ -158,32 +158,7 @@ class Watcher implements IWatcher {
    * @internal
    */
   public unwrap<Result>(result: Result): Result {
-    // Primitives and functions
-    if (!isObject(result)) {
-      return result;
-    }
-
-    const source = getSource(result);
-
-    // If it was a proxy - just unwrap it
-    if (source !== result) {
-      return source;
-    }
-
-    // Generated object
-    for (const key of reflectOwnKeys(result)) {
-      const value = (result as AbstractRecord)[key];
-      const unwrappedValue = this.unwrap(value);
-      if (unwrappedValue !== value) {
-        // It is safe to update the result since it is a generated object.
-        (result as AbstractRecord)[key] = unwrappedValue;
-
-        this.#touch(source)?.keys.add(key);
-        this[kTouched].set(getSource(unwrappedValue) as object, kSelf);
-      }
-    }
-
-    return result;
+    return this.#unwrap(result, new Set());
   }
 
   /**
@@ -372,6 +347,41 @@ class Watcher implements IWatcher {
       this[kTouched].set(source, touched);
     }
     return touched;
+  }
+
+  #unwrap<Result>(result: Result, visited: Set<object>): Result {
+    // Primitives and functions
+    if (!isObject(result)) {
+      return result;
+    }
+
+    const source = getSource(result);
+
+    // Prevent loops
+    if (visited.has(result)) {
+      return source;
+    }
+    visited.add(result);
+
+    // If it was a proxy - just unwrap it
+    if (source !== result) {
+      return source;
+    }
+
+    // Generated object
+    for (const key of reflectOwnKeys(result)) {
+      const value = (result as AbstractRecord)[key];
+      const unwrappedValue = this.#unwrap(value, visited);
+      if (unwrappedValue !== value) {
+        // It is safe to update the result since it is a generated object.
+        (result as AbstractRecord)[key] = unwrappedValue;
+
+        this.#touch(source)?.keys.add(key);
+        this[kTouched].set(getSource(unwrappedValue) as object, kSelf);
+      }
+    }
+
+    return result;
   }
 }
 
