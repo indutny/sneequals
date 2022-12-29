@@ -16,7 +16,7 @@
     "build": "npm run build:cjs && npm run build:esm",
     "build:cjs": "tsc",
     "build:esm": "tsc --module es2020 --declaration false --outDir dist/esm",
-    "build:docs": "typedoc src/index.ts",
+    "build:docs": "typedoc src/index.ts --includeVersion",
     "test": "c8 --100 ava test/*.ts",
     "format": "prettier --cache --write .",
     "lint": "npm run check:eslint && npm run check:format",
