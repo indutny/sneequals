@@ -451,6 +451,30 @@ test('wrapAll', (t) => {
   t.true(watcher.isChanged(b, { x: 2 }), 'changed second object');
 });
 
+test('unwrapping the proxy itself', (t) => {
+  const input = {
+    x: {
+      y: 1,
+    },
+    z: 2,
+  };
+
+  const { proxy, watcher } = watch(input);
+
+  const derived = watcher.unwrap(proxy);
+  watcher.stop();
+
+  t.is(derived, input);
+
+  t.deepEqual(getAffectedPaths(watcher, input), ['$']);
+
+  t.false(watcher.isChanged(input, input), 'input should be equal to itself');
+  t.true(
+    watcher.isChanged(input, { ...input }),
+    'copied input should be not be equal',
+  );
+});
+
 test('circular object', (t) => {
   type Circular = {
     a: {

@@ -365,6 +365,8 @@ class Watcher implements IWatcher {
 
     // If it was a proxy - just unwrap it
     if (source !== result) {
+      // bBut mark the proxy
+      this[kTouched].set(source, kSelf);
       return source;
     }
 
@@ -372,12 +374,12 @@ class Watcher implements IWatcher {
     for (const key of reflectOwnKeys(result)) {
       const value = (result as AbstractRecord)[key];
       const unwrappedValue = this.#unwrap(value, visited);
-      if (unwrappedValue !== value) {
-        // It is safe to update the result since it is a generated object.
-        (result as AbstractRecord)[key] = unwrappedValue;
 
+      // `value` was a proxy - we already marked it as `kSelf` and now we have
+      // to updated the derived object and touch the property in it.
+      if (unwrappedValue !== value) {
+        (result as AbstractRecord)[key] = unwrappedValue;
         this.#touch(source)?.keys.add(key);
-        this[kTouched].set(getSource(unwrappedValue) as object, kSelf);
       }
     }
 
