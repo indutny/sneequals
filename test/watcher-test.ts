@@ -156,6 +156,53 @@ test('nested wraps', (t) => {
   );
 });
 
+test('nested wraps with self use', (t) => {
+  const input = {
+    x: {
+      y: 1,
+    },
+    z: 2,
+  };
+
+  const { proxy: p1, watcher: w1 } = watch(input);
+  const { proxy: p2, watcher: w2 } = watch(p1.x);
+
+  const derived = w1.unwrap({
+    x: w2.unwrap(p2),
+  });
+
+  w2.stop();
+  w1.stop();
+
+  t.is(derived.x.y, 1);
+  t.deepEqual(getAffectedPaths(w1, input), ['$.x']);
+  t.deepEqual(getAffectedPaths(w2, input.x), ['$']);
+
+  t.false(
+    w2.isChanged(input.x, input.x),
+    'outer: proxy should be equal to itself',
+  );
+  t.true(
+    w2.isChanged(input.x, { y: 1 }),
+    'outer: proxy should not be equal to its copy',
+  );
+
+  t.false(w1.isChanged(input, input), 'inner: input should be equal to itself');
+  t.false(
+    w1.isChanged(input, { ...input, z: 3 }),
+    'unrelated properties should not be taken in account',
+  );
+  t.true(
+    w1.isChanged(input, {
+      x: {
+        y: 1,
+      },
+      z: 3,
+    }),
+    'replacing deeply accessed object should cause invalidation',
+  );
+});
+
 test('nested wraps with non-configurable properties', (t) => {
   const input = [1, 2, 3];
   const { proxy: p1, watcher: w1 } = watch(input);

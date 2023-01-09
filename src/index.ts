@@ -252,13 +252,13 @@ class Watcher implements IWatcher {
       return value;
     }
 
+    const source = getSource(value);
+
     // Return cached proxy
-    const entry = this.#proxyMap.get(value);
+    const entry = this.#proxyMap.get(source);
     if (entry !== undefined) {
       return entry as Value;
     }
-
-    const source = getSource(value);
 
     // We need to be able to return tracked value on "get" access to the object,
     // but for the frozen object all properties are readonly and
@@ -328,7 +328,7 @@ class Watcher implements IWatcher {
       },
     });
 
-    this.#proxyMap.set(value, proxy);
+    this.#proxyMap.set(source, proxy);
     this.#revokes.push(revoke);
     return proxy as Value;
   }
@@ -354,12 +354,11 @@ class Watcher implements IWatcher {
     if (!isObject(result)) {
       return result;
     }
-
     const source = getSource(result);
 
     // If it was a proxy - just unwrap it
-    if (source !== result) {
-      // bBut mark the proxy
+    if (this.#proxyMap.has(source)) {
+      // But mark the proxy as fully used.
       this[kTouched].set(source, kSelf);
       return source;
     }
@@ -380,7 +379,7 @@ class Watcher implements IWatcher {
       // to updated the derived object and touch the property in it.
       if (unwrappedValue !== value) {
         (result as AbstractRecord)[key] = unwrappedValue;
-        this.#touch(source)?.keys.add(key);
+        this.#touch(result)?.keys.add(key);
       }
     }
 

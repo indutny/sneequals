@@ -77,10 +77,10 @@ On M1 Macbook Pro 13:
 > @indutny/sneequals@1.3.5 bench
 > bencher dist/benchmarks/*.js
 
-isChanged:    4’908’768.8 ops/sec (±14’161.5, p=0.001, o=3/100)
-isNotChanged: 9’652’811.3 ops/sec (±14’807.1, p=0.001, o=5/100)
-memoize:      9’931’338.3 ops/sec (±71’837.7, p=0.001, o=8/100)
-watch+unwrap: 786’580.6 ops/sec (±10’857.1, p=0.001, o=0/100)
+isChanged:    4’977’558.1 ops/sec (±22’452.9, p=0.001, o=8/100)
+isNotChanged: 9’369’084.6 ops/sec (±52’271.6, p=0.001, o=9/100)
+memoize:      9’846’658.1 ops/sec (±79’016.2, p=0.001, o=5/100)
+watch+unwrap: 745’887.7 ops/sec (±10’107.6, p=0.001, o=9/100)
 ```
 
 ## Credits
