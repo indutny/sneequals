@@ -508,8 +508,9 @@ export interface IMemoizeOptions<Params extends ReadonlyArray<unknown>> {
  * function will return cached value as long as the arguments of the call have
  * the same tracked values as the last time.
  *
- * Note that this means that the memoized function keeps at most one cached
- * result, similar to redux's {@link https://github.com/reduxjs/reselect | reselect}.
+ * Memoized function has two cache levels:
+ * - A WeakMap by first object parameter
+ * - Global cache that only holds the last execution result.
  *
  * @see {@link IMemoizeOptions} for details on available options.
  *
@@ -565,11 +566,19 @@ export const memoize = <Params extends ReadonlyArray<unknown>, Result>(
     result: Result;
   }>;
 
-  let cached: CacheEntry | undefined;
+  const cacheMap = new WeakMap<object, CacheEntry | undefined>();
+  let lastEntry: CacheEntry | undefined;
   return (...params: Params): Result => {
     const sources = params.map((param) =>
       getSource(param),
     ) as unknown as Params;
+    const cacheKey: object | undefined = sources.find(isObject);
+
+    let cached: CacheEntry | undefined;
+    if (cacheKey !== undefined) {
+      cached = cacheMap.get(cacheKey);
+    }
+    cached ??= lastEntry;
 
     if (cached !== undefined && cached.sources.length === sources.length) {
       let isValid = true;
@@ -599,7 +608,10 @@ export const memoize = <Params extends ReadonlyArray<unknown>, Result>(
       result,
     };
 
-    cached = newCached;
+    if (cacheKey !== undefined) {
+      cacheMap.set(cacheKey, newCached);
+    }
+    lastEntry = newCached;
 
     return result;
   };
