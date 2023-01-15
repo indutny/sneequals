@@ -72,15 +72,15 @@ console.log(watcher.isChanged(originalData, sneakyDifferentData)); // true
 On M1 Macbook Pro 13:
 
 ```sh
-% npm run bench -- --ignore-outliers
+% npm run bench -- --duration 30 --ignore-outliers
 
 > @indutny/sneequals@1.3.5 bench
 > bencher dist/benchmarks/*.js
 
-isChanged:    4’977’558.1 ops/sec (±22’452.9, p=0.001, o=8/100)
-isNotChanged: 9’369’084.6 ops/sec (±52’271.6, p=0.001, o=9/100)
-memoize:      9’846’658.1 ops/sec (±79’016.2, p=0.001, o=5/100)
-watch+unwrap: 745’887.7 ops/sec (±10’107.6, p=0.001, o=9/100)
+isChanged:    4’336’043.2 ops/sec (±28’636.7, p=0.001, o=5/100)
+isNotChanged: 7’830’106.8 ops/sec (±53’241.7, p=0.001, o=1/100)
+memoize:      7’632’437.7 ops/sec (±49’917.5, p=0.001, o=1/100)
+watch+unwrap: 738’642.1 ops/sec (±3’396.8, p=0.001, o=3/100)
 ```
 
 ## Credits

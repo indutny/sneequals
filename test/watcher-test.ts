@@ -172,7 +172,6 @@ test('nested wraps with self use', (t) => {
   });
 
   w2.stop();
-  w1.stop();
 
   t.is(derived.x.y, 1);
   t.deepEqual(getAffectedPaths(w1, input), ['$.x']);
@@ -182,10 +181,16 @@ test('nested wraps with self use', (t) => {
     w2.isChanged(input.x, input.x),
     'outer: proxy should be equal to itself',
   );
+  t.false(
+    w2.isChanged(input.x, p1.x),
+    'outer: proxy should be equal to proxy of itself',
+  );
   t.true(
     w2.isChanged(input.x, { y: 1 }),
     'outer: proxy should not be equal to its copy',
   );
+
+  w1.stop();
 
   t.false(w1.isChanged(input, input), 'inner: input should be equal to itself');
   t.false(

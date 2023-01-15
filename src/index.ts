@@ -184,9 +184,10 @@ class Watcher implements IWatcher {
     }
 
     const oldSource = getSource(oldValue);
+    const newSource = getSource(newValue);
 
     // Fast case!
-    if (oldSource === newValue) {
+    if (oldSource === newSource) {
       return false;
     }
 
@@ -203,10 +204,10 @@ class Watcher implements IWatcher {
     }
 
     const oldRecord = oldSource as AbstractRecord;
-    const newRecord = newValue as AbstractRecord;
+    const newRecord = newSource as AbstractRecord;
 
     if (touched.hasOwn === kAllOwnKeys) {
-      if (!hasSameOwnKeys(oldSource, newValue)) {
+      if (!hasSameOwnKeys(oldSource, newSource)) {
         return true;
       }
     } else {
