@@ -128,8 +128,8 @@ type TouchedEntry = {
   // Set of keys that were checked with `in` operator.
   readonly has: Set<string | symbol>;
 
-  // Set of keys that were checked with `Object.hasOwn` function or `true` if
-  // `Object.keys()` was called on proxy.
+  // Set of keys that were checked with `Object.hasOwn` function or
+  // `kAllOwnKeys` if `Object.keys()` was called on proxy.
   hasOwn: Set<string | symbol> | typeof kAllOwnKeys;
 };
 
