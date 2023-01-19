@@ -483,8 +483,18 @@ export const watchAll = <Values extends ReadonlyArray<unknown>>(
 export interface IMemoizeOptions<Params extends ReadonlyArray<unknown>> {
   /**
    * This optional method is called on every cache hit.
+   *
+   * Note that since `params` were used when creating the `watcher` - you can
+   * use them in `watcher` API methods and in `getAffectedPaths`.
+   *
+   * @param watcher - the previously created `IWatcher` object created with
+   *                  `watchAll(params)` API method.
+   * @param params - an array of parameters from the previous cached call.
+   *
+   * @see {@link IWatcher}
+   * @see {@link getAffectedPaths}
    */
-  onHit?(): void;
+  onHit?(watcher: IWatcher, params: Params): void;
 
   /**
    * This optional method is called on every cache miss.
@@ -590,7 +600,7 @@ export const memoize = <Params extends ReadonlyArray<unknown>, Result>(
         }
       }
       if (isValid) {
-        options?.onHit?.();
+        options?.onHit?.(cached.watcher, cached.sources);
         return cached.result;
       }
     }
